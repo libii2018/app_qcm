@@ -1,0 +1,49 @@
+{
+  "name": "qcm-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Application QCM pour apprendre l'anglais et d'autres matières",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "cd apps/api && npm run dev",
+    "dev:web": "cd apps/web && npm run dev",
+    "build": "npm run build:shared && npm run build:api && npm run build:web",
+    "build:shared": "cd packages/shared && npm run build",
+    "build:api": "cd apps/api && npm run build",
+    "build:web": "cd apps/web && npm run build",
+    "test": "npm run test:shared && npm run test:api && npm run test:web",
+    "test:shared": "cd packages/shared && npm run test",
+    "test:api": "cd apps/api && npm run test",
+    "test:web": "cd apps/web && npm run test",
+    "test:e2e": "cd apps/web && npm run test:e2e",
+    "lint": "npm run lint:shared && npm run lint:api && npm run lint:web",
+    "lint:shared": "cd packages/shared && npm run lint",
+    "lint:api": "cd apps/api && npm run lint",
+    "lint:web": "cd apps/web && npm run lint",
+    "typecheck": "npm run typecheck:shared && npm run typecheck:api && npm run typecheck:web",
+    "typecheck:shared": "cd packages/shared && npm run typecheck",
+    "typecheck:api": "cd apps/api && npm run typecheck",
+    "typecheck:web": "cd apps/web && npm run typecheck",
+    "schema": "cd packages/shared && npm run schema",
+    "seed": "cd apps/api && npm run seed",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "clean": "rm -rf node_modules && npm run clean:shared && npm run clean:api && npm run clean:web",
+    "clean:shared": "cd packages/shared && rm -rf node_modules dist",
+    "clean:api": "cd apps/api && rm -rf node_modules dist",
+    "clean:web": "cd apps/web && rm -rf node_modules dist"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "packageManager": "npm@10.2.0"
+}

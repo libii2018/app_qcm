@@ -1,0 +1,302 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://qcm-app.example.com/schemas/quiz.schema.json",
+  "title": "Quiz Schema",
+  "description": "Schéma JSON pour les quiz QCM de l'application d'apprentissage. Ce schéma peut être utilisé pour valider les quiz générés par une IA ou importés manuellement.",
+  "version": "1.0.0",
+  "type": "object",
+  "required": ["schemaVersion", "id", "title", "questions"],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "description": "Version du schéma utilisé. Doit être 1 pour cette version.",
+      "minimum": 1
+    },
+    "id": {
+      "type": "string",
+      "description": "Identifiant unique du quiz. Utilisez des caractères alphanumériques et des tirets.",
+      "pattern": "^[a-zA-Z0-9-]+$",
+      "maxLength": 100
+    },
+    "title": {
+      "type": "string",
+      "description": "Titre du quiz.",
+      "maxLength": 200
+    },
+    "subject": {
+      "type": "string",
+      "description": "Matière ou domaine d'étude (ex: Anglais, Mathématiques, Histoire).",
+      "maxLength": 100
+    },
+    "description": {
+      "type": "string",
+      "description": "Description détaillée du quiz.",
+      "maxLength": 1000
+    },
+    "tags": {
+      "type": "array",
+      "description": "Liste de tags pour classer le quiz.",
+      "items": {
+        "type": "string",
+        "maxLength": 50
+      },
+      "maxItems": 10
+    },
+    "difficulty": {
+      "type": "integer",
+      "description": "Niveau de difficulté du quiz (1 = Facile, 2 = Moyen, 3 = Difficile, 4 = Expert, 5 = Maître).",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "questions": {
+      "type": "array",
+      "description": "Liste des questions du quiz.",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "$ref": "#/definitions/Question"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Métadonnées supplémentaires optionnelles.",
+      "properties": {
+        "author": {
+          "type": "string",
+          "description": "Auteur du quiz.",
+          "maxLength": 200
+        },
+        "version": {
+          "type": "string",
+          "description": "Version du quiz.",
+          "maxLength": 50
+        },
+        "license": {
+          "type": "string",
+          "description": "Licence du quiz (ex: MIT, CC-BY-SA).",
+          "maxLength": 100
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Question": {
+      "type": "object",
+      "required": ["id", "prompt", "options"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identifiant unique de la question au sein du quiz.",
+          "pattern": "^[a-zA-Z0-9-]+$",
+          "maxLength": 100
+        },
+        "prompt": {
+          "type": "array",
+          "description": "Contenu de la question (énoncé). Peut contenir du texte, des images, de l'audio ou de la vidéo.",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/definitions/MediaContent"
+          }
+        },
+        "options": {
+          "type": "array",
+          "description": "Liste des options de réponse.",
+          "minItems": 2,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/definitions/Option"
+          }
+        },
+        "multiple": {
+          "type": "boolean",
+          "description": "Si vrai, plusieurs réponses peuvent être sélectionnées. Par défaut: false (réponse unique).",
+          "default": false
+        },
+        "hint": {
+          "type": "string",
+          "description": "Indice pour aider à répondre à la question.",
+          "maxLength": 500
+        },
+        "explanation": {
+          "type": "string",
+          "description": "Explication détaillée affichée après la réponse.",
+          "maxLength": 2000
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tags spécifiques à cette question.",
+          "items": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "maxItems": 10
+        },
+        "difficulty": {
+          "type": "integer",
+          "description": "Niveau de difficulté de la question (1-5).",
+          "minimum": 1,
+          "maximum": 5
+        }
+      }
+    },
+    "Option": {
+      "type": "object",
+      "required": ["id", "content"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identifiant unique de l'option. Utilisez des lettres simples (a, b, c, ...) ou des identifiants numériques.",
+          "maxLength": 10
+        },
+        "content": {
+          "type": "array",
+          "description": "Contenu de l'option de réponse.",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/definitions/MediaContent"
+          }
+        },
+        "correct": {
+          "type": "boolean",
+          "description": "Si vrai, cette option est une réponse correcte.",
+          "default": false
+        }
+      }
+    },
+    "MediaContent": {
+      "type": "object",
+      "required": ["type"],
+      "oneOf": [
+        {
+          "required": ["value"],
+          "properties": {
+            "type": {
+              "const": "text"
+            },
+            "value": {
+              "type": "string",
+              "description": "Contenu texte. Supporte un sous-ensemble de Markdown (gras, italique, code, listes).",
+              "maxLength": 5000
+            }
+          }
+        },
+        {
+          "required": ["src", "altText"],
+          "properties": {
+            "type": {
+              "const": "image"
+            },
+            "src": {
+              "type": "string",
+              "description": "Source de l'image. Peut être: une URL absolue (https://...), un chemin relatif dans une archive ZIP (media/filename.jpg), ou un identifiant de média hébergé par l'API (media:<id>).",
+              "format": "uri"
+            },
+            "altText": {
+              "type": "string",
+              "description": "Texte alternatif pour l'accessibilité.",
+              "maxLength": 200
+            },
+            "caption": {
+              "type": "string",
+              "description": "Légende optionnelle pour l'image.",
+              "maxLength": 500
+            }
+          }
+        },
+        {
+          "required": ["src"],
+          "properties": {
+            "type": {
+              "const": "audio"
+            },
+            "src": {
+              "type": "string",
+              "description": "Source de l'audio. Formats supportés: mp3, wav, ogg.",
+              "format": "uri"
+            },
+            "altText": {
+              "type": "string",
+              "description": "Description textuelle de l'audio pour l'accessibilité.",
+              "maxLength": 200
+            }
+          }
+        },
+        {
+          "required": ["src"],
+          "properties": {
+            "type": {
+              "const": "video"
+            },
+            "src": {
+              "type": "string",
+              "description": "Source de la vidéo. Formats supportés: mp4, webm.",
+              "format": "uri"
+            },
+            "altText": {
+              "type": "string",
+              "description": "Description textuelle de la vidéo pour l'accessibilité.",
+              "maxLength": 200
+            },
+            "poster": {
+              "type": "string",
+              "description": "Image de prévisualisation (poster) pour la vidéo.",
+              "format": "uri"
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    }
+  },
+  "examples": [
+    {
+      "schemaVersion": 1,
+      "id": "quiz-english-001",
+      "title": "Irregular verbs - niveau B1",
+      "subject": "Anglais",
+      "tags": ["grammaire", "verbes"],
+      "difficulty": 2,
+      "questions": [
+        {
+          "id": "q1",
+          "prompt": [
+            { "type": "text", "value": "Quel est le prétérit de \"go\" ?" }
+          ],
+          "options": [
+            { "id": "a", "content": [{ "type": "text", "value": "goed" }], "correct": false },
+            { "id": "b", "content": [{ "type": "text", "value": "went" }], "correct": true }
+          ],
+          "multiple": false,
+          "hint": "Verbe irrégulier",
+          "explanation": "\"go\" devient \"went\" au prétérit.\n\nFormes: go - went - gone",
+          "tags": ["verbes irréguliers"],
+          "difficulty": 2
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "quiz-multimedia-001",
+      "title": "Vocabulaire des animaux",
+      "subject": "Anglais",
+      "tags": ["vocabulaire", "animaux", "multimédia"],
+      "difficulty": 1,
+      "questions": [
+        {
+          "id": "q1",
+          "prompt": [
+            { "type": "text", "value": "Quel animal est montré sur l'image ?" },
+            { "type": "image", "src": "media/cat.jpg", "altText": "Photo d'un chat" }
+          ],
+          "options": [
+            { "id": "a", "content": [{ "type": "text", "value": "Dog" }], "correct": false },
+            { "id": "b", "content": [{ "type": "text", "value": "Cat" }], "correct": true }
+          ],
+          "multiple": false
+        }
+      ]
+    }
+  ]
+}

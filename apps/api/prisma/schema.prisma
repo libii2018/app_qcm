@@ -1,0 +1,205 @@
+// Schéma Prisma pour l'application QCM
+// Base de données : SQLite (peut être migrée vers PostgreSQL)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Modèles principaux
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Préférences utilisateur
+  streak        Int       @default(0)
+  dailyGoal     Int       @default(10)
+  
+  // Relations
+  quizzes       Quiz[]
+  media         Media[]
+  reviewStates  ReviewState[]
+  answerEvents  AnswerEvent[]
+  backups       Backup[]
+  syncQueue     SyncQueue[]
+  
+  @@index([email])
+}
+
+// Quiz : contient le JSON complet du quiz
+model Quiz {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Métadonnées extraites du JSON pour indexation
+  title         String
+  subject       String
+  description   String?
+  tags          String    // Stocké comme JSON string
+  difficulty    Int
+  
+  // Contenu JSON complet (validé avec Zod) - stocké comme String
+  jsonContent   String
+  
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  reviewStates  ReviewState[]
+  answerEvents  AnswerEvent[]
+  
+  @@index([userId])
+  @@index([subject])
+  @@index([difficulty])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+// Média : fichiers uploadés (images, audio, vidéo)
+model Media {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Informations sur le fichier
+  filename      String
+  originalName  String
+  mimeType      String
+  size          Int
+  path          String    @unique
+  
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([mimeType])
+  @@index([createdAt])
+}
+
+// État de révision pour la répétition espacée
+// Une entrée par question par utilisateur
+model ReviewState {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Référence à la question (extraite du quiz JSON)
+  questionId      String
+  quizId          String?   // Quiz auquel appartient la question (optionnel, pour contexte)
+  quiz            Quiz?     @relation(fields: [quizId], references: [id], onDelete: SetNull)
+  
+  // Algorithme de répétition espacée
+  nextReviewDate  DateTime
+  interval        Int       // Intervalle en jours
+  easeFactor      Float     // Facteur de facilité (1.3 - 2.5)
+  repetitionCount Int       // Nombre de répétitions consécutives correctes
+  
+  // Statistiques supplémentaires
+  consecutiveCorrect Int     @default(0)
+  consecutiveIncorrect Int   @default(0)
+  
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@unique([userId, questionId])
+  @@index([userId])
+  @@index([nextReviewDate])
+  @@index([questionId])
+  @@index([quizId])
+}
+
+// Événement de réponse : chaque réponse enregistrée
+model AnswerEvent {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Références
+  quizId        String?
+  questionId    String    // ID de la question dans le quiz JSON
+  
+  // Résultat
+  correct       Boolean
+  responseTime   Int       // Temps de réponse en millisecondes
+  usedHint      Boolean    @default(false)
+  
+  // Données supplémentaires pour les statistiques
+  selectedOptions String    // Stocké comme JSON string (IDs des options sélectionnées)
+  
+  // Timestamps
+  timestamp     DateTime  @default(now())
+  
+  // Métadonnées extraites du quiz au moment de la réponse
+  tags          String    // Stocké comme JSON string
+  subject       String?
+  difficulty    Int?
+  
+  // Relations
+  quiz          Quiz?     @relation(fields: [quizId], references: [id], onDelete: SetNull)
+  
+  @@index([userId])
+  @@index([timestamp])
+  @@index([questionId])
+  @@index([quizId])
+  @@index([correct])
+  @@index([subject])
+}
+
+// ============================================
+// Modèles pour les sauvegardes et synchronisation
+// ============================================
+
+// Sauvegarde complète de l'utilisateur (pour export/import)
+model Backup {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Données de la sauvegarde - stocké comme String pour SQLite
+  data        String
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// File d'attente pour la synchronisation hors ligne
+model SyncQueue {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Type d'opération
+  operation   String   // 'create_answer', 'update_review', etc.
+  
+  // Données de l'opération - stocké comme String pour SQLite
+  payload     String
+  
+  // État
+  status       String   @default("pending") // pending, processing, completed, failed
+  attempts     Int      @default(0)
+  errorMessage String?
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
