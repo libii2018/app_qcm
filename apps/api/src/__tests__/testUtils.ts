@@ -59,13 +59,14 @@ export async function setupTestDatabase() {
 export async function cleanupTestDatabase() {
   try {
     // Supprimer toutes les données dans le bon ordre (contraintes de clé étrangère)
-    await prisma.syncQueue.deleteMany({});
-    await prisma.backup.deleteMany({});
-    await prisma.answerEvent.deleteMany({});
-    await prisma.reviewState.deleteMany({});
-    await prisma.media.deleteMany({});
-    await prisma.quiz.deleteMany({});
-    await prisma.user.deleteMany({});
+    // Utiliser $executeRaw pour éviter les problèmes de timeout
+    await prisma.$executeRaw`DELETE FROM SyncQueue`;
+    await prisma.$executeRaw`DELETE FROM Backup`;
+    await prisma.$executeRaw`DELETE FROM AnswerEvent`;
+    await prisma.$executeRaw`DELETE FROM ReviewState`;
+    await prisma.$executeRaw`DELETE FROM Media`;
+    await prisma.$executeRaw`DELETE FROM Quiz`;
+    await prisma.$executeRaw`DELETE FROM User`;
   } catch (error) {
     console.error('Erreur lors du nettoyage de la base de test :', error);
     throw error;
@@ -179,18 +180,19 @@ export async function createTestQuiz(userId: string, quizData?: Partial<any>) {
 export async function createTestReviewState(
   userId: string,
   questionId: string,
-  quizId?: string
+  quizId?: string,
+  daysFromNow: number = 1
 ) {
   const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const nextDate = new Date(today);
+  nextDate.setDate(nextDate.getDate() + daysFromNow);
 
   const reviewState = await prisma.reviewState.create({
     data: {
       userId,
       questionId,
       quizId,
-      nextReviewDate: tomorrow,
+      nextReviewDate: nextDate,
       interval: 1,
       easeFactor: 2.5,
       repetitionCount: 0,

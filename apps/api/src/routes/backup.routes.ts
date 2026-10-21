@@ -21,13 +21,7 @@ const upload = multer({
   limits: {
     fileSize: 100 * 1024 * 1024, // 100 Mo max
   },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/zip' || file.originalname.endsWith('.zip')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Seuls les fichiers ZIP sont autorisés'));
-    }
-  },
+  // Supprimer fileFilter - la validation se fera dans le contrôleur
 });
 
 // GET /api/backup - Créer et télécharger une sauvegarde

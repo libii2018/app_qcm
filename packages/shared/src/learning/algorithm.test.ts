@@ -66,10 +66,10 @@ describe('Algorithm - Répétition espacée', () => {
       
       // Vérifier que la date est dans environ 1 jour
       const now = new Date();
-      const expectedMin = now.getTime() + 23 * 60 * 60 * 1000;
-      const expectedMax = now.getTime() + 25 * 60 * 60 * 1000;
-      expect(newState.nextReviewDate.getTime()).toBeGreaterThanOrEqual(expectedMin);
-      expect(newState.nextReviewDate.getTime()).toBeLessThanOrEqual(expectedMax);
+      const oneDayFromNow = now.getTime() + 24 * 60 * 60 * 1000;
+      const tolerance = 5 * 60 * 1000; // 5 secondes de tolérance
+      expect(newState.nextReviewDate.getTime()).toBeGreaterThanOrEqual(oneDayFromNow - tolerance);
+      expect(newState.nextReviewDate.getTime()).toBeLessThanOrEqual(oneDayFromNow + tolerance);
     });
 
     it('devrait réinitialiser après réponse incorrecte', () => {
@@ -98,7 +98,7 @@ describe('Algorithm - Répétition espacée', () => {
       expect(state.repetitionCount).toBe(2);
       
       state = updateReviewState(state, true, 1);
-      // Après 3 bonnes réponses: interval=round(3 * 2.5)=8, repetitionCount=3
+      // Après 3 bonnes réponses: interval=round(3 * 2.6)=8 (2.5 + 0.1 = 2.6), repetitionCount=3
       expect(state.interval).toBe(8);
       expect(state.repetitionCount).toBe(3);
     });
@@ -107,7 +107,9 @@ describe('Algorithm - Répétition espacée', () => {
       const initialEaseFactor = ALGORITHM_CONSTANTS.INITIAL_EASE_FACTOR;
       let state = updateReviewState(initialState, true, 1);
       
+      // Avec difficulté 1: difficultyMultiplier = 1.0, donc easeFactor = 2.5 + 0.1*1.0 = 2.6
       expect(state.easeFactor).toBeGreaterThan(initialEaseFactor);
+      expect(state.easeFactor).toBe(2.6);
       expect(state.easeFactor).toBeLessThanOrEqual(ALGORITHM_CONSTANTS.MAX_EASE_FACTOR);
     });
 
@@ -340,8 +342,20 @@ describe('Algorithm - Répétition espacée', () => {
   });
 
   describe('generateReviewReason', () => {
+    const testQuestion: Question = {
+      id: 'test-q',
+      prompt: [{ type: 'text', value: 'Test' }],
+      options: [
+        { id: 'a', content: [{ type: 'text', value: 'A' }], correct: true },
+        { id: 'b', content: [{ type: 'text', value: 'B' }], correct: false },
+      ],
+      multiple: false,
+      tags: ['test'],
+      difficulty: 1,
+    };
+
     it('devrait retourner "Nouvelle question" pour null', () => {
-      expect(generateReviewReason(null, baseQuestion)).toBe('Nouvelle question');
+      expect(generateReviewReason(null, testQuestion)).toBe('Nouvelle question');
     });
 
     it('devrait indiquer si la question est en retard', () => {
@@ -354,7 +368,7 @@ describe('Algorithm - Répétition espacée', () => {
         lastReviewDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
       };
       
-      const reason = generateReviewReason(state, baseQuestion);
+      const reason = generateReviewReason(state, testQuestion);
       expect(reason).toContain('en retard');
     });
 
@@ -369,7 +383,7 @@ describe('Algorithm - Répétition espacée', () => {
       };
       
       const lastAnswer = { correct: false, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) };
-      const reason = generateReviewReason(state, baseQuestion, lastAnswer);
+      const reason = generateReviewReason(state, testQuestion, lastAnswer);
       expect(reason).toContain('Ratée');
     });
 
@@ -383,7 +397,7 @@ describe('Algorithm - Répétition espacée', () => {
         lastReviewDate: new Date(),
       };
       
-      const reason = generateReviewReason(state, baseQuestion);
+      const reason = generateReviewReason(state, testQuestion);
       expect(reason).toContain('Répétition 3');
     });
 
@@ -397,7 +411,7 @@ describe('Algorithm - Répétition espacée', () => {
         lastReviewDate: new Date(),
       };
       
-      const reason = generateReviewReason(state, baseQuestion);
+      const reason = generateReviewReason(state, testQuestion);
       expect(reason).toContain('difficile');
     });
   });

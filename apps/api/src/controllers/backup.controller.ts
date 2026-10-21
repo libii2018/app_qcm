@@ -103,6 +103,9 @@ export async function createBackup(req: Request, res: Response) {
       throw err;
     });
 
+    // Pipe l'archive vers la réponse AVANT de finalizer
+    archive.pipe(res);
+
     // Ajouter le fichier backup.json
     const backupData = {
       user,
@@ -140,7 +143,6 @@ export async function createBackup(req: Request, res: Response) {
     }
 
     await archive.finalize();
-    archive.pipe(res);
   } catch (error) {
     console.error('Erreur lors de la création de la sauvegarde :', error);
     throw error;
@@ -158,8 +160,14 @@ export async function restoreBackup(req: Request, res: Response) {
     throw new BadRequestError('Fichier de sauvegarde requis');
   }
 
+  // Vérifier que le fichier est un ZIP (magic number: PK)
+  const buffer = file.buffer;
+  if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4B) {
+    throw new BadRequestError('Le fichier doit être un archive ZIP valide');
+  }
+
   try {
-    const zip = new AdmZip(file.buffer);
+    const zip = new AdmZip(buffer);
     const zipEntries = zip.getEntries();
 
     // Trouver le fichier backup.json
@@ -367,6 +375,9 @@ export async function downloadBackup(req: Request, res: Response) {
     throw err;
   });
 
+  // Pipe l'archive vers la réponse AVANT de finalizer
+  archive.pipe(res);
+
   // Ajouter le fichier backup.json
   archive.append(
     JSON.stringify(backupData, null, 2),
@@ -394,5 +405,4 @@ export async function downloadBackup(req: Request, res: Response) {
   }
 
   await archive.finalize();
-  archive.pipe(res);
 }

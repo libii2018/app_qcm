@@ -1,1 +1,54 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Database
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Test and coverage
+coverage/
+.nyc_output/
+
+# Uploads
+uploads/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Docker
+docker-compose.override.yml
+
+# Local config
+*.local
+
+# Package lock files (optional - some projects commit these)
+# package-lock.json
+# pnpm-lock.yaml
+# yarn.lock

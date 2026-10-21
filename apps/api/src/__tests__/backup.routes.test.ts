@@ -48,7 +48,7 @@ function createTestBackupZip() {
     createdAt: new Date().toISOString(),
   };
   
-  zip.addLocalFile(Buffer.from(JSON.stringify(backupData, null, 2)), 'backup.json');
+  zip.addFile('backup.json', Buffer.from(JSON.stringify(backupData, null, 2)));
   
   return zip.toBuffer();
 }
@@ -67,12 +67,23 @@ describe('GET /api/backup', () => {
     const response = await request(app)
       .get('/api/backup')
       .set('Cookie', [`token=${token}`])
+      .parse((res, callback) => {
+        let data = Buffer.alloc(0);
+        res.on('data', chunk => {
+          data = Buffer.concat([data, chunk]);
+        });
+        res.on('end', () => {
+          callback(null, data, {});
+        });
+      })
       .expect(200);
 
     expect(response.headers['content-type']).toContain('application/zip');
     expect(response.headers['content-disposition']).toContain('attachment');
     expect(response.headers['content-disposition']).toContain('backup-');
     expect(response.body).toBeDefined();
+    expect(Buffer.isBuffer(response.body)).toBe(true);
+    expect((response.body as Buffer).length).toBeGreaterThan(0);
 
     // Vérifier que le ZIP contient backup.json
     const zip = new AdmZip(response.body);
@@ -92,6 +103,15 @@ describe('GET /api/backup', () => {
     const response = await request(app)
       .get('/api/backup')
       .set('Cookie', [`token=${token}`])
+      .parse((res, callback) => {
+        let data = Buffer.alloc(0);
+        res.on('data', chunk => {
+          data = Buffer.concat([data, chunk]);
+        });
+        res.on('end', () => {
+          callback(null, data, {});
+        });
+      })
       .expect(200);
 
     const zip = new AdmZip(response.body);
@@ -188,7 +208,7 @@ describe('POST /api/backup/restore', () => {
 
     // Créer un ZIP sans backup.json
     const zip = new AdmZip();
-    zip.addLocalFile(Buffer.from('test'), 'test.txt');
+    zip.addFile('test.txt', Buffer.from('test'));
     const zipBuffer = zip.toBuffer();
 
     const response = await request(app)
@@ -259,12 +279,21 @@ describe('GET /api/backup/download/:id', () => {
     const response = await request(app)
       .get(`/api/backup/download/${filename}`)
       .set('Cookie', [`token=${token}`])
+      .buffer()
+      .parse((res, callback) => {
+        let data = Buffer.alloc(0);
+        res.on('data', (chunk) => {
+          data = Buffer.concat([data, chunk]);
+        });
+        res.on('end', () => {
+          callback(null, data);
+        });
+      })
       .expect(200);
 
     expect(response.headers['content-type']).toContain('application/zip');
     expect(response.headers['content-disposition']).toContain('attachment');
-    expect(response.body).toBeDefined();
-
+    
     const zip = new AdmZip(response.body);
     expect(zip.getEntries().some(e => e.entryName === 'backup.json')).toBe(true);
   });

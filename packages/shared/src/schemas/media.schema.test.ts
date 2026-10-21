@@ -309,7 +309,7 @@ describe('Media Schema - Validation Zod', () => {
 
   describe('validateQuizJson', () => {
     it('devrait valider un quiz valide', () => {
-      const result = validateQuizJson(validQuiz);
+      const result = validateQuizJson(validQuiz as QuizJson);
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
       expect(result.errors).toHaveLength(0);
