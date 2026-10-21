@@ -22,10 +22,10 @@ describe('GET /api/stats', () => {
     const quiz2 = await createTestQuiz(user.id, { title: 'Quiz 2', subject: 'Mathématiques' });
 
     // Créer des réponses
-    await createTestAnswerEvent(user.id, quiz1.id, 'q1', true);
-    await createTestAnswerEvent(user.id, quiz1.id, 'q2', false);
-    await createTestAnswerEvent(user.id, quiz2.id, 'q1', true);
-    await createTestAnswerEvent(user.id, quiz2.id, 'q2', true);
+    await createTestAnswerEvent(user.id, quiz1.id, 'q1', true, false, ['test'], 'Anglais');
+    await createTestAnswerEvent(user.id, quiz1.id, 'q2', false, false, ['test'], 'Anglais');
+    await createTestAnswerEvent(user.id, quiz2.id, 'q1', true, false, ['test'], 'Mathématiques');
+    await createTestAnswerEvent(user.id, quiz2.id, 'q2', true, false, ['test'], 'Mathématiques');
 
     const token = await authenticateUser(email, password);
 
@@ -79,9 +79,9 @@ describe('GET /api/stats/performance', () => {
 
     expect(response.body).toHaveProperty('data');
     expect(response.body.data).toHaveProperty('stats');
-    expect(response.body.data.stats.totalAnswers).toBe(3);
-    expect(response.body.data.stats.correctAnswers).toBe(2);
-    expect(response.body.data.stats.incorrectAnswers).toBe(1);
+    expect(response.body.data.stats.totalQuestions).toBe(3);
+    expect(response.body.data.stats.correctCount).toBe(2);
+    expect(response.body.data.stats.incorrectCount).toBe(1);
     expect(response.body.data.stats.successRate).toBeCloseTo(66.67, 1);
   });
 
@@ -93,8 +93,8 @@ describe('GET /api/stats/performance', () => {
     const quiz1 = await createTestQuiz(user.id, { title: 'Quiz Anglais', subject: 'Anglais' });
     const quiz2 = await createTestQuiz(user.id, { title: 'Quiz Maths', subject: 'Mathématiques' });
 
-    await createTestAnswerEvent(user.id, quiz1.id, 'q1', true, true);
-    await createTestAnswerEvent(user.id, quiz2.id, 'q1', false, false);
+    await createTestAnswerEvent(user.id, quiz1.id, 'q1', true, false, ['test'], 'Anglais');
+    await createTestAnswerEvent(user.id, quiz2.id, 'q1', false, false, ['test'], 'Mathématiques');
 
     const token = await authenticateUser(email, password);
 
@@ -104,8 +104,8 @@ describe('GET /api/stats/performance', () => {
       .set('Cookie', [`token=${token}`])
       .expect(200);
 
-    expect(response.body.data.stats.totalAnswers).toBe(1);
-    expect(response.body.data.stats.correctAnswers).toBe(1);
+    expect(response.body.data.stats.totalQuestions).toBe(1);
+    expect(response.body.data.stats.correctCount).toBe(1);
   });
 });
 
@@ -135,8 +135,8 @@ describe('GET /api/stats/tags', () => {
 
     const grammaireStats = response.body.data.stats.find((s: any) => s.tag === 'grammaire');
     expect(grammaireStats).toBeDefined();
-    expect(grammaireStats.total).toBe(2);
-    expect(grammaireStats.correct).toBe(2);
+    expect(grammaireStats.totalQuestions).toBe(2);
+    expect(grammaireStats.correctCount).toBe(2);
     expect(grammaireStats.successRate).toBe(100);
   });
 });
@@ -167,8 +167,8 @@ describe('GET /api/stats/subjects', () => {
 
     const anglaisStats = response.body.data.stats.find((s: any) => s.subject === 'Anglais');
     expect(anglaisStats).toBeDefined();
-    expect(anglaisStats.total).toBe(2);
-    expect(anglaisStats.correct).toBe(1);
+    expect(anglaisStats.totalQuestions).toBe(2);
+    expect(anglaisStats.correctCount).toBe(1);
   });
 });
 
@@ -219,11 +219,12 @@ describe('GET /api/stats/learning', () => {
 
     expect(response.body).toHaveProperty('data');
     expect(response.body.data).toHaveProperty('learningStats');
-    expect(response.body.data.learningStats).toHaveProperty('totalQuestions');
+    expect(response.body.data.learningStats).toHaveProperty('newQuestions');
+    expect(response.body.data.learningStats).toHaveProperty('learningQuestions');
+    expect(response.body.data.learningStats).toHaveProperty('masteredQuestions');
     expect(response.body.data.learningStats).toHaveProperty('dueToday');
     expect(response.body.data.learningStats).toHaveProperty('dueThisWeek');
-    expect(response.body.data.learningStats).toHaveProperty('learning');
-    expect(response.body.data.learningStats).toHaveProperty('mastered');
+    expect(response.body.data.learningStats).toHaveProperty('forecast');
   });
 });
 
@@ -258,7 +259,7 @@ describe('GET /api/stats/failed-questions', () => {
     // q1 devrait être dans les plus ratées
     const q1Failed = response.body.data.failedQuestions.find((fq: any) => fq.questionId === 'q1');
     expect(q1Failed).toBeDefined();
-    expect(q1Failed.failureCount).toBeGreaterThanOrEqual(3);
+    expect(q1Failed.totalAttempts).toBeGreaterThanOrEqual(3);
   });
 });
 
@@ -270,11 +271,14 @@ describe('GET /api/stats/weak-areas', () => {
     const { user } = await createTestUser(email, password);
     const quiz = await createTestQuiz(user.id);
 
-    // Créer des réponses avec des tags de points faibles
+    // Créer des réponses avec des tags de points faibles (5+ pour atteindre minTotal)
     await createTestAnswerEvent(user.id, quiz.id, 'q1', false, false, ['grammaire']);
     await createTestAnswerEvent(user.id, quiz.id, 'q2', false, false, ['grammaire']);
     await createTestAnswerEvent(user.id, quiz.id, 'q3', false, false, ['grammaire']);
-    await createTestAnswerEvent(user.id, quiz.id, 'q4', true, false, ['vocabulaire']);
+    await createTestAnswerEvent(user.id, quiz.id, 'q4', false, false, ['grammaire']);
+    await createTestAnswerEvent(user.id, quiz.id, 'q5', false, false, ['grammaire']);
+    await createTestAnswerEvent(user.id, quiz.id, 'q6', false, false, ['grammaire']);
+    await createTestAnswerEvent(user.id, quiz.id, 'q7', true, false, ['vocabulaire']);
 
     const token = await authenticateUser(email, password);
 
@@ -288,7 +292,7 @@ describe('GET /api/stats/weak-areas', () => {
     expect(Array.isArray(response.body.data.weakAreas)).toBe(true);
 
     // grammaire devrait être une zone faible
-    const grammaireWeak = response.body.data.weakAreas.find((wa: any) => wa.tag === 'grammaire');
+    const grammaireWeak = response.body.data.weakAreas.find((wa: any) => wa.name === 'grammaire' && wa.type === 'tag');
     expect(grammaireWeak).toBeDefined();
   });
 });
@@ -314,8 +318,8 @@ describe('GET /api/stats/streak', () => {
           correct: true,
           responseTime: 5000,
           usedHint: false,
-          selectedOptions: ['a'],
-          tags: ['test'],
+          selectedOptions: JSON.stringify(['a']),
+          tags: JSON.stringify(['test']),
           subject: 'Test',
           difficulty: 1,
           timestamp: date,

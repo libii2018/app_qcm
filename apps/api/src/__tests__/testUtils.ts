@@ -68,6 +68,7 @@ export async function cleanupTestDatabase() {
     await prisma.user.deleteMany({});
   } catch (error) {
     console.error('Erreur lors du nettoyage de la base de test :', error);
+    throw error;
   }
 }
 
@@ -115,15 +116,18 @@ export async function authenticateUser(email: string, password: string): Promise
  * Crée un quiz de test
  */
 export async function createTestQuiz(userId: string, quizData?: Partial<any>) {
+  const { v4: uuidv4 } = await import('uuid');
+  const quizId = quizData?.id || `quiz-${uuidv4()}`;
+  
   const defaultQuiz = {
-    id: `quiz-${Date.now()}`,
+    id: quizId,
     title: 'Quiz de test',
     subject: 'Test',
     tags: ['test'],
     difficulty: 1,
     jsonContent: {
       schemaVersion: 1,
-      id: `quiz-${Date.now()}`,
+      id: quizId,
       title: 'Quiz de test',
       subject: 'Test',
       tags: ['test'],
@@ -205,19 +209,23 @@ export async function createTestAnswerEvent(
   userId: string,
   quizId?: string,
   questionId?: string,
-  correct?: boolean
+  correct?: boolean,
+  usedHint: boolean = false,
+  tags: string[] = ['test'],
+  subject: string = 'Test',
+  responseTime: number = 5000
 ) {
   const answerEvent = await prisma.answerEvent.create({
     data: {
       userId,
       quizId,
       questionId: questionId || 'q1',
-      correct: correct || true,
-      responseTime: 5000,
-      usedHint: false,
+      correct: correct !== undefined ? correct : true,
+      responseTime,
+      usedHint,
       selectedOptions: JSON.stringify(['a']),
-      tags: JSON.stringify(['test']),
-      subject: 'Test',
+      tags: JSON.stringify(tags),
+      subject,
       difficulty: 1,
     },
   });

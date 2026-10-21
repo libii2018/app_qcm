@@ -16,12 +16,19 @@ import { cleanupTestDatabase, setupTestDatabase } from './testUtils';
 
 // Configuration de l'environnement avant les tests
 beforeAll(async () => {
-  // Initialiser la base de données de test
+  // Initialiser la base de données de test (avec force reset)
   await setupTestDatabase();
+  // Nettoyer une première fois
+  await cleanupTestDatabase();
 });
 
 // Nettoyer la base de données avant chaque test
 beforeEach(async () => {
+  await cleanupTestDatabase();
+});
+
+// Nettoyer aussi après chaque test pour doublement s'assurer
+afterEach(async () => {
   await cleanupTestDatabase();
 });
 
