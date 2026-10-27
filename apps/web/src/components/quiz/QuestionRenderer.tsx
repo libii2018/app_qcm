@@ -65,11 +65,13 @@ export function QuestionRenderer({
 
       {/* Options */}
       <div className="space-y-3 mb-6">
-        {question.options.map((option) => {
+        {question.options.map((option, index) => {
           const selected = isOptionSelected(option.id);
           const correct = isOptionCorrect(option);
           const wrong = isOptionWrong(option);
           const correctAndSelected = isCorrectSelected(option);
+          // Lettre d'énumération (A, B, C, ...) affichée pendant le jeu
+          const optionLabel = String.fromCharCode(65 + index);
 
           return (
             <button
@@ -97,7 +99,8 @@ export function QuestionRenderer({
                   showCorrect && wrong ? 'bg-red-600 text-white' : '',
                   !selected && !showCorrect ? 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400' : ''
                 )}>
-                  {correct ? '✓' : wrong ? '✗' : selected ? '•' : option.id.toUpperCase()}
+                  {/* Ne révéler ✓/✗ qu'en mode correction (showCorrect) */}
+                  {showCorrect && correct ? '✓' : showCorrect && wrong ? '✗' : optionLabel}
                 </div>
                 <div className="flex-1">
                   {renderContent(option.content)}
