@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import React, { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Toast as ToastComponent, ToastProps, ToastContainerProps } from './Toast';
 import { cn } from '../../utils/cn';

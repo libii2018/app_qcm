@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuiz, useCreateQuiz, useUpdateQuiz } from '../../hooks/useQuizzes';
 import { useUploadMedia } from '../../hooks/useMedia';
-import { Quiz, QuizQuestion, MediaContent, QuizContentItem } from '@qcm/shared';
-import { validateQuiz, createEmptyQuiz, createEmptyQuestion } from '@qcm/shared';
+import { QuizJson, Question, MediaContent } from '@qcm/shared';
+import { validateQuizJson, generateId } from '@qcm/shared';
 import { Layout } from '../../components/Layout';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
@@ -17,17 +17,45 @@ import { cn } from '../../utils/cn';
 
 type EditorMode = 'visual' | 'json';
 
+function createEmptyQuestion(): Question {
+  return {
+    id: generateId('q'),
+    prompt: [{ type: 'text', value: '' }],
+    options: [
+      { id: 'a', content: [{ type: 'text', value: '' }], correct: true },
+      { id: 'b', content: [{ type: 'text', value: '' }], correct: false },
+    ],
+    multiple: false,
+    tags: [],
+    difficulty: 1,
+  };
+}
+
+function createEmptyQuizJson(): QuizJson {
+  return {
+    schemaVersion: 1,
+    id: generateId('quiz'),
+    title: '',
+    subject: '',
+    tags: [],
+    difficulty: 1,
+    questions: [createEmptyQuestion()],
+  };
+}
+
 export function QuizEditor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const isNew = id === 'new';
+  // La route statique "/quizzes/new/edit" ne fournit aucun paramètre à useParams,
+  // donc "id" est undefined pour un nouveau quiz.
+  const isNew = !id || id === 'new';
   
-  const { data: existingQuiz, isLoading } = useQuiz(id!);
+  const { data: existingQuiz, isLoading } = useQuiz(isNew ? '' : id!);
   const createMutation = useCreateQuiz();
   const updateMutation = useUpdateQuiz();
   const uploadMutation = useUploadMedia();
 
-  const [draft, setDraft] = useState<Quiz>(createEmptyQuiz());
+  const [draft, setDraft] = useState<QuizJson>(createEmptyQuizJson());
   const [mode, setMode] = useState<EditorMode>('visual');
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
@@ -38,23 +66,35 @@ export function QuizEditor() {
   // Initialize from existing quiz or empty
   useEffect(() => {
     if (existingQuiz && !isNew) {
-      setDraft(existingQuiz);
-      setJsonInput(JSON.stringify(existingQuiz, null, 2));
+      const stored = existingQuiz.jsonContent as QuizJson | null;
+      const parsed = stored && Array.isArray(stored.questions) ? stored : createEmptyQuizJson();
+      // Synchroniser les métadonnées de l'enregistrement avec le brouillon
+      const merged: QuizJson = {
+        ...parsed,
+        title: existingQuiz.title || parsed.title,
+        subject: existingQuiz.subject || parsed.subject,
+        description: existingQuiz.description ?? parsed.description,
+        tags: existingQuiz.tags || parsed.tags,
+        difficulty: existingQuiz.difficulty ?? parsed.difficulty,
+      };
+      setDraft(merged);
+      setJsonInput(JSON.stringify(merged, null, 2));
     } else {
-      const newQuiz = createEmptyQuiz();
+      const newQuiz = createEmptyQuizJson();
       setDraft(newQuiz);
       setJsonInput(JSON.stringify(newQuiz, null, 2));
     }
-  }, [existingQuiz, isNew, id]);
+  }, [existingQuiz, isNew]);
 
   // Sync JSON input with draft
   useEffect(() => {
     if (mode === 'json' && jsonError === null) {
       try {
         const parsed = JSON.parse(jsonInput);
-        // Validate
-        validateQuiz(parsed as unknown as Quiz);
-        setDraft(parsed as Quiz);
+        const result = validateQuizJson(parsed);
+        if (result.success && result.data) {
+          setDraft(result.data as QuizJson);
+        }
       } catch {
         // Ignore, will be handled by validation
       }
@@ -68,11 +108,11 @@ export function QuizEditor() {
     }
   }, [draft, mode]);
 
-  const handleUpdateField = useCallback((field: keyof Quiz, value: any) => {
+  const handleUpdateField = useCallback((field: keyof QuizJson, value: any) => {
     setDraft(prev => ({ ...prev, [field]: value }));
   }, []);
 
-  const handleUpdateQuestion = useCallback((index: number, field: keyof QuizQuestion, value: any) => {
+  const handleUpdateQuestion = useCallback((index: number, field: keyof Question, value: any) => {
     setDraft(prev => {
       const newQuestions = [...prev.questions];
       newQuestions[index] = { ...newQuestions[index], [field]: value };
@@ -140,14 +180,14 @@ export function QuizEditor() {
   const handleUpdateOption = useCallback((
     questionIndex: number, 
     optionIndex: number, 
-    field: keyof typeof draft.questions[0].options[0], 
+    field: keyof Question['options'][number],
     value: any
   ) => {
     setDraft(prev => {
       const newQuestions = [...prev.questions];
       const question = { ...newQuestions[questionIndex] };
       const option = { ...question.options[optionIndex] };
-      option[field] = value;
+      (option as Record<string, unknown>)[field] = value;
       question.options[optionIndex] = option;
       newQuestions[questionIndex] = question;
       return { ...prev, questions: newQuestions };
@@ -161,8 +201,14 @@ export function QuizEditor() {
   const handleJsonApply = useCallback(() => {
     try {
       const parsed = JSON.parse(jsonInput);
-      validateQuiz(parsed as unknown as Quiz);
-      setDraft(parsed as Quiz);
+      const result = validateQuizJson(parsed);
+      if (!result.success || !result.data) {
+        const message = result.errors.join('; ');
+        setJsonError(message);
+        setToast({ type: 'error', message: 'JSON invalide: ' + message });
+        return;
+      }
+      setDraft(result.data as QuizJson);
       setJsonError(null);
       setMode('visual');
       setToast({ type: 'success', message: 'JSON appliqué avec succès' });
@@ -177,14 +223,19 @@ export function QuizEditor() {
   const handleSave = useCallback(async () => {
     try {
       // Validate
-      validateQuiz(draft);
+      const result = validateQuizJson(draft);
+      if (!result.success || !result.data) {
+        setToast({ type: 'error', message: 'Quiz invalide: ' + result.errors.join('; ') });
+        return;
+      }
+      const validQuiz = result.data as QuizJson;
       
       if (isNew) {
-        const newQuiz = await createMutation.mutateAsync(draft);
+        const newQuiz = await createMutation.mutateAsync(validQuiz);
         setToast({ type: 'success', message: 'Quiz créé avec succès' });
         navigate(`/quizzes/${newQuiz.id}/edit`);
       } else {
-        await updateMutation.mutateAsync({ id: id!, quiz: draft });
+        await updateMutation.mutateAsync({ id: id!, quiz: validQuiz });
         setToast({ type: 'success', message: 'Quiz mis à jour avec succès' });
       }
     } catch (err) {
@@ -610,8 +661,8 @@ export function QuizEditor() {
 
 // Content Editor Component
 interface ContentEditorProps {
-  content: QuizContentItem[];
-  onChange: (content: QuizContentItem[]) => void;
+  content: MediaContent[];
+  onChange: (content: MediaContent[]) => void;
   onUpload?: (file: File) => Promise<any>;
   placeholder?: string;
 }
@@ -620,10 +671,10 @@ function ContentEditor({ content, onChange, onUpload, placeholder }: ContentEdit
   const [showMediaUpload, setShowMediaUpload] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const handleAddContent = (type: QuizContentItem['type']) => {
-    const newItem: QuizContentItem = {
+  const handleAddContent = (type: MediaContent['type']) => {
+    const newItem: MediaContent = {
       type,
-      ...(type === 'text' ? { value: '' } : { src: '', altText: '' }),
+      ...(type === 'text' ? { value: '' } : { src: '' }),
     };
     onChange([...content, newItem]);
   };
@@ -679,7 +730,7 @@ function ContentEditor({ content, onChange, onUpload, placeholder }: ContentEdit
                   {item.type === 'image' && (
                     <img 
                       src={item.src} 
-                      alt={item.altText || ''}
+                      alt={item.alt || ''}
                       className="max-h-20 rounded"
                     />
                   )}
@@ -696,8 +747,8 @@ function ContentEditor({ content, onChange, onUpload, placeholder }: ContentEdit
 
           <div className="flex items-center justify-between mt-2">
             <div className="flex items-center gap-2">
-              {item.type !== 'text' && item.altText && (
-                <span className="text-xs text-gray-500 dark:text-gray-400">Alt: {item.altText}</span>
+              {item.type !== 'text' && item.alt && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">Alt: {item.alt}</span>
               )}
             </div>
             <button

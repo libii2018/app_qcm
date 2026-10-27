@@ -167,7 +167,7 @@ export function isDueForReview(state: ReviewState | null): boolean {
  */
 export function calculateQuestionPriority(
   state: ReviewState | null,
-  question: Question,
+  question: Question & { subject?: string },
   weakAreas: Set<string>, // Tags/matières qui sont des points faibles
   lastAnswer?: { correct: boolean; timestamp: Date }
 ): number {
@@ -216,7 +216,7 @@ export function calculateQuestionPriority(
   }
 
   // 6. Questions dans des zones faibles
-  const questionTags = new Set([...question.tags, question.subject]);
+  const questionTags = new Set([...question.tags, ...(question.subject ? [question.subject] : [])]);
   for (const tag of questionTags) {
     if (weakAreas.has(tag)) {
       priority += 20;

@@ -11,7 +11,7 @@ import { ZodSchema, ZodError } from 'zod';
  * @param source - Source des données ('body', 'query', 'params')
  */
 export function validateRequest(schema: ZodSchema, source: 'body' | 'query' | 'params' = 'body') {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): Response | void => {
     try {
       // Valider les données
       const data = req[source];
@@ -61,7 +61,9 @@ export function validateRequest(schema: ZodSchema, source: 'body' | 'query' | 'p
  * Formate une erreur Zod en message lisible en français
  */
 function formatZodError(error: ZodError['errors'][0]): string {
-  const { code, message, path, min, max, expected, options } = error;
+  const { code, message, path } = error;
+  // Champs additionnels selon le type d'erreur Zod (pas présents sur toutes les variantes)
+  const { min, max, expected, options, keys, validation, type } = error as any;
 
   switch (code) {
     case 'invalid_type':
@@ -82,7 +84,7 @@ function formatZodError(error: ZodError['errors'][0]): string {
       return `doit être égal à ${expected}`;
 
     case 'unrecognized_keys':
-      return `contient des clés non reconnues : ${error.keys.join(', ')}`;
+      return `contient des clés non reconnues : ${keys.join(', ')}`;
 
     case 'invalid_union':
       return `doit correspondre à l'une des valeurs : ${options?.join(', ') || expected}`;
@@ -100,41 +102,41 @@ function formatZodError(error: ZodError['errors'][0]): string {
       return `date invalide : ${message}`;
 
     case 'invalid_string':
-      if (error.validation === 'email') {
+      if (validation === 'email') {
         return 'adresse email invalide';
-      } else if (error.validation === 'uuid') {
+      } else if (validation === 'uuid') {
         return 'UUID invalide';
-      } else if (error.validation === 'cuid') {
+      } else if (validation === 'cuid') {
         return 'CUID invalide';
-      } else if (error.validation === 'ulid') {
+      } else if (validation === 'ulid') {
         return 'ULID invalide';
-      } else if (error.validation === 'url') {
+      } else if (validation === 'url') {
         return 'URL invalide';
-      } else if (error.validation === 'emoji') {
+      } else if (validation === 'emoji') {
         return 'doit être un emoji';
-      } else if (error.validation === 'datetime') {
+      } else if (validation === 'datetime') {
         return 'date/heure invalide';
-      } else if (error.validation === 'base64') {
+      } else if (validation === 'base64') {
         return 'chaîne Base64 invalide';
       }
       return `chaîne invalide : ${message}`;
 
     case 'too_small':
-      if (error.type === 'array') {
+      if (type === 'array') {
         return `doit contenir au moins ${min} élément${min !== 1 ? 's' : ''}`;
-      } else if (error.type === 'string') {
+      } else if (type === 'string') {
         return `doit contenir au moins ${min} caractère${min !== 1 ? 's' : ''}`;
-      } else if (error.type === 'number') {
+      } else if (type === 'number') {
         return `doit être supérieur ou égal à ${min}`;
       }
       return `trop petit : ${message}`;
 
     case 'too_big':
-      if (error.type === 'array') {
+      if (type === 'array') {
         return `doit contenir au maximum ${max} élément${max !== 1 ? 's' : ''}`;
-      } else if (error.type === 'string') {
+      } else if (type === 'string') {
         return `doit contenir au maximum ${max} caractère${max !== 1 ? 's' : ''}`;
-      } else if (error.type === 'number') {
+      } else if (type === 'number') {
         return `doit être inférieur ou égal à ${max}`;
       }
       return `trop grand : ${message}`;
@@ -173,7 +175,7 @@ export function validateMultiple(
     params?: ZodSchema;
   }
 ) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): Response | void => {
     try {
       const errors: Record<string, string[]> = {};
 

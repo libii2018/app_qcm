@@ -1,10 +1,10 @@
-import { QuizQuestion, MediaContent, Option } from '@qcm/shared';
+import { Question, MediaContent, Option } from '@qcm/shared';
 import { useState } from 'react';
 import { MediaPlayer } from '../common/MediaPlayer';
 import { cn } from '../../utils/cn';
 
 export interface QuestionRendererProps {
-  question: QuizQuestion;
+  question: Question;
   onSelect?: (optionId: string, isSelected: boolean) => void;
   selectedOptions?: string[];
   showCorrect?: boolean;
@@ -38,7 +38,7 @@ export function QuestionRenderer({
               <div 
                 className="prose dark:prose-invert max-w-none"
                 dangerouslySetInnerHTML={{ 
-                  __html: sanitizeMarkdown(item.value) 
+                  __html: sanitizeMarkdown(item.value || '')
                 }}
               />
             )}
@@ -83,7 +83,7 @@ export function QuestionRenderer({
                 showCorrect && correctAndSelected ? 'border-green-500 bg-green-50 dark:bg-green-900/30 ring-2 ring-green-500' : '',
                 showCorrect && correct && !selected ? 'border-green-500 bg-green-50/50 dark:bg-green-900/20' : '',
                 showCorrect && wrong ? 'border-red-500 bg-red-50 dark:bg-red-900/30 ring-2 ring-red-500' : '',
-                !selected && !showCorrect ? 'border-gray-300 dark:border-gray-600'
+                !selected && !showCorrect ? 'border-gray-300 dark:border-gray-600' : ''
               )}
               aria-pressed={selected}
               aria-label={`Option ${option.id}: ${option.content[0]?.value || 'Contenu média'}`}
@@ -95,7 +95,7 @@ export function QuestionRenderer({
                   showCorrect && correctAndSelected ? 'bg-green-600 text-white' : '',
                   showCorrect && correct && !selected ? 'bg-green-600 text-white opacity-50' : '',
                   showCorrect && wrong ? 'bg-red-600 text-white' : '',
-                  !selected && !showCorrect ? 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                  !selected && !showCorrect ? 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400' : ''
                 )}>
                   {correct ? '✓' : wrong ? '✗' : selected ? '•' : option.id.toUpperCase()}
                 </div>

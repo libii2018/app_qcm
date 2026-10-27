@@ -52,7 +52,7 @@ export function Toast({ type, message, onDismiss, title, duration = 5000 }: Toas
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(onDismiss, 300);
+      if (onDismiss) setTimeout(() => onDismiss(), 300);
     }, duration);
 
     return () => clearTimeout(timer);
@@ -78,7 +78,7 @@ export function Toast({ type, message, onDismiss, title, duration = 5000 }: Toas
         <button
           onClick={() => {
             setIsVisible(false);
-            setTimeout(onDismiss, 300);
+            if (onDismiss) setTimeout(() => onDismiss(), 300);
           }}
           className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
           aria-label="Fermer"

@@ -29,6 +29,7 @@
     "react-router-dom": "^6.21.3",
     "recharts": "^3.0.0",
     "tailwind-merge": "^2.2.1",
+    "tailwindcss-animate": "^1.0.7",
     "uuid": "^9.0.1",
     "workbox-window": "^7.0.0"
   },

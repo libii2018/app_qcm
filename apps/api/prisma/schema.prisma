@@ -24,6 +24,7 @@ model User {
   // Préférences utilisateur
   streak        Int       @default(0)
   dailyGoal     Int       @default(10)
+  settings      String?   // Préférences diverses stockées comme JSON string
   
   // Relations
   quizzes       Quiz[]

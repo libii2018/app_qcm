@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { Quiz, QuizQuestion, SessionQuestion } from '@qcm/shared';
+import { Quiz, QuizJson, Question, QuizSession } from '@qcm/shared';
+import { SessionQuestion } from '../../types/api';
 import { useQuiz } from '../../hooks/useQuizzes';
 import { useSubmitAnswers } from '../../hooks/useAnswers';
 import { QuestionRenderer } from '../../components/quiz/QuestionRenderer';
@@ -21,7 +22,7 @@ export function QuizPlayer() {
   const location = useLocation();
   const navigate = useNavigate();
   
-  const state = location.state as QuizPlayerProps;
+  const state = (location.state as QuizPlayerProps | null) ?? ({} as QuizPlayerProps);
   const { data: quiz } = useQuiz(id!);
   
   const submitAnswersMutation = useSubmitAnswers();
@@ -31,7 +32,6 @@ export function QuizPlayer() {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
   const [answerTimes, setAnswerTimes] = useState<Record<string, number>>({});
-  const [showResults, setShowResults] = useState(false);
   const [shuffleAnswers, setShuffleAnswers] = useState(false);
   const [correctAnswers, setCorrectAnswers] = useState<Record<string, boolean>>({});
   const [hintUsed, setHintUsed] = useState<Record<string, boolean>>({});
@@ -39,25 +39,16 @@ export function QuizPlayer() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Determine questions to use
-  const questions: QuizQuestion[] = state.sessionQuestions 
-    ? state.sessionQuestions.map(q => ({
-        ...q,
-        id: q.questionId,
-        prompt: q.prompt || [],
-        options: q.options || [],
-        multiple: q.multiple || false,
-        hint: q.hint,
-        explanation: q.explanation,
-        tags: q.tags || [],
-        difficulty: q.difficulty || 1
-      }))
-    : quiz?.questions || [];
+  const quizJson = (quiz?.jsonContent as QuizJson | undefined) || undefined;
+  const questions: Question[] = state.sessionQuestions 
+    ? state.sessionQuestions.map(sq => sq.question)
+    : quizJson?.questions || [];
 
   const isSession = !!state.sessionQuestions;
   const title = state.title || quiz?.title || 'Quiz';
 
   // Shuffle options if enabled
-  const getShuffledOptions = useCallback((q: QuizQuestion) => {
+  const getShuffledOptions = useCallback((q: Question) => {
     if (!shuffleAnswers || q.options.length <= 1) return q.options;
     return [...q.options].sort(() => Math.random() - 0.5);
   }, [shuffleAnswers]);
@@ -105,8 +96,6 @@ export function QuizPlayer() {
   const handleNext = useCallback(() => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(prev => prev + 1);
-    } else {
-      setShowResults(true);
     }
   }, [currentIndex, questions.length]);
 
@@ -116,56 +105,52 @@ export function QuizPlayer() {
     }
   }, [currentIndex]);
 
-  const handleSubmitAnswer = useCallback(async () => {
-    const question = questions[currentIndex];
-    const selections = selectedOptions[question.id] || [];
-    
-    // Check if answer is correct
-    const correctOptionIds = question.options.filter(o => o.correct).map(o => o.id);
-    const isCorrect = selections.length > 0 && 
-      (question.multiple
-        ? selections.length === correctOptionIds.length && 
-          correctOptionIds.every(id => selections.includes(id))
-        : selections[0] === correctOptionIds[0]);
-
-    setCorrectAnswers(prev => ({ ...prev, [question.id]: isCorrect }));
-
-    // If instant feedback, check answer
-    // Otherwise, continue
-    if (currentIndex < questions.length - 1) {
-      // Small delay to show feedback
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setCurrentIndex(prev => prev + 1);
-    } else {
-      setShowResults(true);
-    }
-  }, [currentIndex, questions, selectedOptions]);
-
-  const handleEndQuiz = useCallback(async () => {
+  // Soumet les réponses au serveur puis navigue vers la page de résultats
+  // (finalCorrectAnswers permet d'inclure la réponse de la dernière question,
+  // pas encore présente dans le state correctAnswers au moment de l'appel)
+  const handleEndQuiz = useCallback(async (finalCorrectAnswers?: Record<string, boolean>) => {
     // Submit all answers to server
-    const submissions = questions.map(q => {
+    const quizId = quiz?.id || state.sessionId || 'unknown';
+    const correctCount = questions.filter(q => {
       const selections = selectedOptions[q.id] || [];
       const correctOptionIds = q.options.filter(o => o.correct).map(o => o.id);
-      const isCorrect = selections.length > 0 && 
+      return selections.length > 0 && 
         (q.multiple
-          ? selections.length === correctOptionIds.length && 
+          ? selections.length === correctOptionIds.length &&
             correctOptionIds.every(id => selections.includes(id))
           : selections[0] === correctOptionIds[0]);
+    }).length;
 
-      return {
-        quizId: quiz?.id || state.sessionId || 'unknown',
-        questionId: q.id,
-        selectedOptionIds: selections,
-        correct: isCorrect,
-        timeSpent: answerTimes[q.id] || 0,
-        timestamp: new Date().toISOString(),
-        hintUsed: hintUsed[q.id] || false
-      };
-    });
+    const sessionPayload: QuizSession = {
+      quizId,
+      questions: questions.map(q => {
+        const selections = selectedOptions[q.id] || [];
+        const correctOptionIds = q.options.filter(o => o.correct).map(o => o.id);
+        const isCorrect = selections.length > 0 && 
+          (q.multiple
+            ? selections.length === correctOptionIds.length &&
+              correctOptionIds.every(id => selections.includes(id))
+            : selections[0] === correctOptionIds[0]);
+
+        return {
+          questionId: q.id,
+          quizId,
+          selectedOptions: selections,
+          correct: isCorrect,
+          responseTime: answerTimes[q.id] || 0,
+          usedHint: hintUsed[q.id] || false
+        };
+      }),
+      totalQuestions: questions.length,
+      correctCount,
+      totalTime: startTime ? Date.now() - startTime : 0,
+      startedAt: startTime ? new Date(startTime) : new Date(),
+      completedAt: new Date()
+    };
 
     try {
       if (!isSession) {
-        await submitAnswersMutation.mutateAsync(submissions);
+        await submitAnswersMutation.mutateAsync(sessionPayload);
       }
     } catch (error) {
       console.error('Failed to submit answers:', error);
@@ -176,7 +161,7 @@ export function QuizPlayer() {
         quiz: quiz,
         questions,
         selectedOptions,
-        correctAnswers,
+        correctAnswers: finalCorrectAnswers ?? correctAnswers,
         answerTimes,
         startTime,
         totalQuestions: questions.length,
@@ -184,6 +169,30 @@ export function QuizPlayer() {
       }
     });
   }, [questions, selectedOptions, correctAnswers, answerTimes, startTime, quiz, submitAnswersMutation, isSession, state.sessionId, title, navigate]);
+
+  const handleSubmitAnswer = useCallback(async () => {
+    const question = questions[currentIndex];
+    const selections = selectedOptions[question.id] || [];
+
+    // Check if answer is correct
+    const correctOptionIds = question.options.filter(o => o.correct).map(o => o.id);
+    const isCorrect = selections.length > 0 &&
+      (question.multiple
+        ? selections.length === correctOptionIds.length &&
+          correctOptionIds.every(id => selections.includes(id))
+        : selections[0] === correctOptionIds[0]);
+
+    setCorrectAnswers(prev => ({ ...prev, [question.id]: isCorrect }));
+
+    if (currentIndex < questions.length - 1) {
+      // Small delay to show feedback
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setCurrentIndex(prev => prev + 1);
+    } else {
+      // Dernière question : terminer le quiz et afficher les résultats
+      await handleEndQuiz({ ...correctAnswers, [question.id]: isCorrect });
+    }
+  }, [currentIndex, questions, selectedOptions, correctAnswers, handleEndQuiz]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     // Handle keyboard shortcuts for answer selection
@@ -228,11 +237,6 @@ export function QuizPlayer() {
         </div>
       </Layout>
     );
-  }
-
-  if (showResults) {
-    // This would redirect to results page
-    return null;
   }
 
   return (

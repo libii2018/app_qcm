@@ -18,6 +18,7 @@ interface QuestionWithState extends Question {
   quizId: string;
   quizTitle: string;
   quizSubject: string;
+  subject: string;
   reviewState: ReviewState | null;
   lastAnswer?: {
     correct: boolean;
@@ -86,6 +87,7 @@ export function generateTodaySession(options: SessionGenerationOptions): Generat
         quizId: quiz.id,
         quizTitle: quiz.title,
         quizSubject: quiz.subject,
+        subject: quiz.subject,
         reviewState,
         lastAnswer,
       });
@@ -313,6 +315,7 @@ export function generateQuizSession(
       quizId: quiz.id,
       quizTitle: quiz.title,
       quizSubject: quiz.subject,
+      subject: quiz.subject,
       reviewState,
       lastAnswer,
     };
@@ -420,6 +423,7 @@ export function generateMixedSession(
         quizId: quiz.id,
         quizTitle: quiz.title,
         quizSubject: quiz.subject,
+        subject: quiz.subject,
         reviewState,
         lastAnswer,
       });
@@ -504,5 +508,6 @@ export function generateMixedSession(
 }
 
 // Ré-exporter les fonctions de l'algorithme
-export { ReviewState, isDueForReview, getQuestionCategory, calculateQuestionPriority, generateReviewReason };
+export { isDueForReview, getQuestionCategory, calculateQuestionPriority, generateReviewReason };
+export type { ReviewState };
 export { ALGORITHM_CONSTANTS };

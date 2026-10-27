@@ -7,6 +7,8 @@
  * - Notification des mises à jour
  */
 
+/// <reference lib="webworker" />
+
 import { precacheAndRoute } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { StaleWhileRevalidate, NetworkFirst, CacheFirst } from 'workbox-strategies';
@@ -83,7 +85,7 @@ self.addEventListener('fetch', (event) => {
           return response;
         }).catch(() => {
           // Si la requête échoue, retourner la réponse cache si disponible
-          return response || caches.match(event.request) || new Response(null, { status: 503 });
+          return response || caches.match(event.request).then((cached) => cached || new Response(null, { status: 503 }));
         });
       })
     );
@@ -129,7 +131,7 @@ self.addEventListener('sync', (event) => {
 
 // Synchroniser les réponses en attente
 async function syncAnswers() {
-  const queue = await answerQueue.getQueue();
+  const queue = await (answerQueue as any).getQueue();
   const entries = await queue.getAll();
 
   if (entries.length === 0) {
@@ -195,7 +197,7 @@ self.addEventListener('notificationclick', (event) => {
   
   if (event.notification.data) {
     event.waitUntil(
-      clients.openWindow(event.notification.data)
+      self.clients.openWindow(event.notification.data)
     );
   }
 });

@@ -4,6 +4,7 @@
 
 import { writeFileSync } from 'fs';
 import { resolve } from 'path';
+import type { ZodTypeAny } from 'zod';
 import { QuizSchema, MediaContentSchema, OptionSchema, QuestionSchema } from '../schemas/media.schema';
 
 /**
@@ -151,7 +152,7 @@ function zodToJsonSchema(schema: any, description?: string): any {
 
     case 'ZodUnion':
       return {
-        anyOf: schema._def.options.map(opt => zodToJsonSchema(opt)),
+        anyOf: (schema._def.options as ZodTypeAny[]).map(opt => zodToJsonSchema(opt)),
         ...(description && { description }),
       };
 

@@ -109,7 +109,7 @@ router.post(
   requireAuth,
   requireResourceOwnership('quiz', 'id'),
   validateRequest(QuizSessionParamsSchema),
-  asyncHandler((req, res) => {
+  asyncHandler(async (req, res) => {
     // À implémenter si nécessaire
     res.json({ message: 'Session démarrée' });
   })

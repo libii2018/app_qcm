@@ -1,6 +1,6 @@
 import { PrismaClient, User, Quiz } from '@prisma/client';
 import { hash } from 'bcrypt';
-import { Quiz as SharedQuiz } from '@qcm/shared';
+import { QuizJson as SharedQuiz } from '@qcm/shared';
 
 const prisma = new PrismaClient();
 
@@ -121,7 +121,7 @@ const multimediaQuiz: SharedQuiz = {
         { 
           type: 'image', 
           src: 'media/cat.jpg',
-          altText: 'Photo d\'un chat noir et blanc'
+          alt: 'Photo d\'un chat noir et blanc'
         }
       ],
       options: [
@@ -143,7 +143,7 @@ const multimediaQuiz: SharedQuiz = {
         { 
           type: 'audio', 
           src: 'media/dog-bark.mp3',
-          altText: 'Aboiement de chien'
+          alt: 'Aboiement de chien'
         }
       ],
       options: [
@@ -165,7 +165,7 @@ const multimediaQuiz: SharedQuiz = {
         { 
           type: 'image', 
           src: 'media/bird.jpg',
-          altText: 'Photo d\'un oiseau coloré'
+          alt: 'Photo d\'un oiseau coloré'
         }
       ],
       options: [
@@ -173,7 +173,7 @@ const multimediaQuiz: SharedQuiz = {
           id: 'a', 
           content: [
             { type: 'text', value: 'Elephant' },
-            { type: 'image', src: 'media/elephant.jpg', altText: 'Éléphant' }
+            { type: 'image', src: 'media/elephant.jpg', alt: 'Éléphant' }
           ], 
           correct: false 
         },
@@ -181,7 +181,7 @@ const multimediaQuiz: SharedQuiz = {
           id: 'b', 
           content: [
             { type: 'text', value: 'Bird' },
-            { type: 'image', src: 'media/bird-icon.jpg', altText: 'Icône d\'oiseau' }
+            { type: 'image', src: 'media/bird-icon.jpg', alt: 'Icône d\'oiseau' }
           ], 
           correct: true 
         },
@@ -189,7 +189,7 @@ const multimediaQuiz: SharedQuiz = {
           id: 'c', 
           content: [
             { type: 'text', value: 'Lion' },
-            { type: 'image', src: 'media/lion.jpg', altText: 'Lion' }
+            { type: 'image', src: 'media/lion.jpg', alt: 'Lion' }
           ], 
           correct: false 
         },
@@ -197,7 +197,7 @@ const multimediaQuiz: SharedQuiz = {
           id: 'd', 
           content: [
             { type: 'text', value: 'Monkey' },
-            { type: 'image', src: 'media/monkey.jpg', altText: 'Singe' }
+            { type: 'image', src: 'media/monkey.jpg', alt: 'Singe' }
           ], 
           correct: false 
         }
@@ -241,9 +241,9 @@ async function main() {
         title: irregularVerbsQuiz.title,
         subject: irregularVerbsQuiz.subject,
         description: irregularVerbsQuiz.description,
-        tags: irregularVerbsQuiz.tags,
+        tags: JSON.stringify(irregularVerbsQuiz.tags),
         difficulty: irregularVerbsQuiz.difficulty,
-        jsonContent: irregularVerbsQuiz
+        jsonContent: JSON.stringify(irregularVerbsQuiz)
       }
     });
 
@@ -258,9 +258,9 @@ async function main() {
         title: multimediaQuiz.title,
         subject: multimediaQuiz.subject,
         description: multimediaQuiz.description,
-        tags: multimediaQuiz.tags,
+        tags: JSON.stringify(multimediaQuiz.tags),
         difficulty: multimediaQuiz.difficulty,
-        jsonContent: multimediaQuiz
+        jsonContent: JSON.stringify(multimediaQuiz)
       }
     });
 
@@ -344,8 +344,8 @@ async function main() {
           correct: answer.correct,
           responseTime: answer.responseTime,
           usedHint: answer.usedHint,
-          selectedOptions: answer.selectedOptions,
-          tags: answer.tags,
+          selectedOptions: JSON.stringify(answer.selectedOptions),
+          tags: JSON.stringify(answer.tags),
           subject: answer.subject,
           difficulty: answer.difficulty,
           timestamp: new Date(Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)) // Aléatoire dans la dernière semaine

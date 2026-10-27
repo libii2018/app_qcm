@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { cn } from '../../utils/cn';
-import { Quiz, QuizQuestion } from '@qcm/shared';
-import { validateQuiz } from '@qcm/shared';
+import { Question } from '@qcm/shared';
+import { validateQuizJson } from '@qcm/shared';
 
 export interface CodeEditorProps {
   value: string;
@@ -22,16 +22,25 @@ export function CodeEditor({ value, onChange, mode = 'quiz', className, readOnly
       try {
         const parsed = JSON.parse(value);
         if (mode === 'quiz') {
-          validateQuiz(parsed as unknown as Quiz);
+          const result = validateQuizJson(parsed);
+          if (!result.success) {
+            throw new Error(result.errors.join('; '));
+          }
         } else if (mode === 'question') {
           // For single question, wrap it in a quiz structure for validation
           const wrapper = { 
             schemaVersion: 1, 
             id: 'temp', 
             title: 'Temp', 
-            questions: [parsed as unknown as QuizQuestion] 
+            subject: 'Temp',
+            difficulty: 1,
+            tags: [],
+            questions: [parsed as unknown as Question] 
           };
-          validateQuiz(wrapper);
+          const result = validateQuizJson(wrapper);
+          if (!result.success) {
+            throw new Error(result.errors.join('; '));
+          }
         }
         setError(null);
         setLineError(null);

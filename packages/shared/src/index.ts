@@ -23,3 +23,7 @@ export * from './stats';
 
 // Utilitaires
 export * from './utils';
+
+// Export explicite pour lever l'ambiguïté : ReviewState est défini à la fois
+// dans ./types et via ./learning (algorithm)
+export type { ReviewState } from './types';

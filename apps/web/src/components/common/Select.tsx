@@ -6,15 +6,16 @@ export interface SelectOption {
   label: string;
 }
 
-export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
+export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'placeholder'> {
   label?: string;
   error?: string;
   hint?: string;
   options: SelectOption[];
+  placeholder?: string;
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, label, error, hint, options, id, ...props }, ref) => {
+  ({ className, label, error, hint, options, placeholder, id, ...props }, ref) => {
     const selectId = id || props.name;
     
     return (
@@ -39,9 +40,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           aria-describedby={error ? `${selectId}-error` : hint ? `${selectId}-hint` : undefined}
           {...props}
         >
-          {props.placeholder && (
+          {placeholder && (
             <option value="" disabled>
-              {props.placeholder}
+              {placeholder}
             </option>
           )}
           {options.map((option) => (

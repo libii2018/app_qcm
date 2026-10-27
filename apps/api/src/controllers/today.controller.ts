@@ -76,8 +76,12 @@ export async function getTodayRecommendation(req: Request, res: Response) {
   const answerEvents = await prisma.answerEvent.findMany({
     where: { userId },
     select: {
+      id: true,
+      userId: true,
       questionId: true,
       correct: true,
+      responseTime: true,
+      usedHint: true,
       timestamp: true,
       quizId: true,
       tags: true,
@@ -104,10 +108,10 @@ export async function getTodayRecommendation(req: Request, res: Response) {
   const allEventsExtended = answerEvents.map(e => ({
     ...e,
     questionId: e.questionId,
-    quizId: e.quizId,
+    quizId: e.quizId ?? undefined,
     // Parser tags si c'est une string JSON
     tags: e.tags ? (typeof e.tags === 'string' ? JSON.parse(e.tags) : e.tags) : [],
-    subject: e.subject,
+    subject: e.subject ?? undefined,
     difficulty: e.difficulty || 1,
   }));
 
@@ -201,8 +205,12 @@ export async function getReviewQueue(req: Request, res: Response) {
   const answerEvents = await prisma.answerEvent.findMany({
     where: { userId },
     select: {
+      id: true,
+      userId: true,
       questionId: true,
       correct: true,
+      responseTime: true,
+      usedHint: true,
       timestamp: true,
       quizId: true,
       tags: true,
@@ -228,9 +236,10 @@ export async function getReviewQueue(req: Request, res: Response) {
     answerEvents.map(e => ({
       ...e,
       questionId: e.questionId,
+      quizId: e.quizId ?? undefined,
       // Parser tags si c'est une string JSON
       tags: e.tags ? (typeof e.tags === 'string' ? JSON.parse(e.tags) : e.tags) : [],
-      subject: e.subject,
+      subject: e.subject ?? undefined,
       difficulty: 1,
     })),
     5

@@ -32,7 +32,7 @@ export const QuestionSchema = z.object({
 
 // Schéma pour un quiz complet
 export const QuizSchema = z.object({
-  schemaVersion: z.literal(1, 'La version du schéma doit être 1'),
+  schemaVersion: z.literal(1, { message: 'La version du schéma doit être 1' }),
   id: z.string().min(1, 'L\'ID doit contenir au moins 1 caractère'),
   title: z.string().min(1, 'Le titre est obligatoire'),
   subject: z.string().min(1, 'La matière est obligatoire'),
@@ -43,16 +43,18 @@ export const QuizSchema = z.object({
   metadata: z.record(z.unknown()).optional(),
 });
 
-// Type extrait du schéma
-export type QuizJson = z.infer<typeof QuizSchema>;
-export type Question = z.infer<typeof QuestionSchema>;
-export type Option = z.infer<typeof OptionSchema>;
-export type MediaContent = z.infer<typeof MediaContentSchema>;
+// Types ré-exportés depuis ../types pour éviter les exports ambigus
+export type { MediaContent, Option, Question, QuizJson } from '../types';
+import type { QuizJson } from '../types';
 
 // Fonction de validation avec messages en français
-export function validateQuizJson(data: unknown): { success: boolean; data?: QuizJson; errors: string[] } {
+export type QuizValidationResult =
+  | { success: true; data: QuizJson; errors: [] }
+  | { success: false; data?: undefined; errors: string[] };
+
+export function validateQuizJson(data: unknown): QuizValidationResult {
   const result = QuizSchema.safeParse(data);
-  
+
   if (result.success) {
     return { success: true, data: result.data, errors: [] };
   }
@@ -72,13 +74,13 @@ export function validateQuizJson(data: unknown): { success: boolean; data?: Quiz
         message = `Le champ « ${path} » doit être l'une des valeurs : ${error.options?.join(', ')}`;
         break;
       case 'too_small':
-        if (error.min !== undefined) {
-          message = `Le champ « ${path} » doit avoir au moins ${error.min} ${error.type === 'array' ? 'éléments' : error.type === 'string' ? 'caractères' : ''}`;
+        if (error.minimum !== undefined) {
+          message = `Le champ « ${path} » doit avoir au moins ${error.minimum} ${error.type === 'array' ? 'éléments' : error.type === 'string' ? 'caractères' : ''}`;
         }
         break;
       case 'too_big':
-        if (error.max !== undefined) {
-          message = `Le champ « ${path} » doit avoir au maximum ${error.max} ${error.type === 'array' ? 'éléments' : error.type === 'string' ? 'caractères' : ''}`;
+        if (error.maximum !== undefined) {
+          message = `Le champ « ${path} » doit avoir au maximum ${error.maximum} ${error.type === 'array' ? 'éléments' : error.type === 'string' ? 'caractères' : ''}`;
         }
         break;
       case 'invalid_string':
@@ -98,7 +100,7 @@ export function validateQuizJson(data: unknown): { success: boolean; data?: Quiz
 // Schéma pour les requêtes d'import/export
 export const ImportQuizSchema = z.object({
   quiz: QuizSchema.optional(),
-  file: z.instanceof(Buffer).optional(),
+  file: z.instanceof(Uint8Array).optional(),
   filename: z.string().optional(),
 });
 

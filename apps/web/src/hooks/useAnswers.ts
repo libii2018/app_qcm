@@ -1,15 +1,16 @@
 import { useMutation } from '@tanstack/react-query';
-import { apiClient } from '../lib/apiClient';
-import { AnswerSubmission, AnswerResponse } from '../types/api';
+import { QuizSession } from '@qcm/shared';
+import { apiClient, AnswerSubmissionPayload } from '../lib/apiClient';
+import { AnswerResponse } from '../types/api';
 
 export function useSubmitAnswer() {
-  return useMutation<AnswerResponse, Error, AnswerSubmission>({
+  return useMutation<AnswerResponse, Error, AnswerSubmissionPayload>({
     mutationFn: (submission) => apiClient.submitAnswer(submission),
   });
 }
 
 export function useSubmitAnswers() {
-  return useMutation<AnswerResponse[], Error, AnswerSubmission[]>({
-    mutationFn: (submissions) => apiClient.submitAnswers(submissions),
+  return useMutation<void, Error, QuizSession>({
+    mutationFn: (session) => apiClient.submitSession(session),
   });
 }

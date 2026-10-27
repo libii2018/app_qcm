@@ -18,6 +18,7 @@ import { statsRouter } from './routes/stats.routes';
 import { todayRouter } from './routes/today.routes';
 import { backupRouter } from './routes/backup.routes';
 import { healthRouter } from './routes/health.routes';
+import { settingsRouter } from './routes/settings.routes';
 
 import { errorHandler } from './middleware/error.middleware';
 import { requestLogger } from './middleware/logger.middleware';
@@ -82,6 +83,7 @@ app.use('/api/stats', statsRouter);
 app.use('/api/today', todayRouter);
 app.use('/api/backup', backupRouter);
 app.use('/api/health', healthRouter);
+app.use('/api/settings', settingsRouter);
 
 // Serveur statique pour les médias (en développement)
 if (process.env.NODE_ENV === 'development') {

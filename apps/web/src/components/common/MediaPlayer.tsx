@@ -20,7 +20,8 @@ export function MediaPlayer({ media, className }: MediaPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  const getMediaUrl = (src: string): string => {
+  const getMediaUrl = (src?: string): string => {
+    if (!src) return '';
     // Handle different source types
     if (src.startsWith('http') || src.startsWith('https')) {
       return src;
@@ -113,7 +114,7 @@ export function MediaPlayer({ media, className }: MediaPlayerProps) {
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
-  }, [media.id, media.src]);
+  }, [media.src]);
 
   if (error) {
     return (
@@ -130,13 +131,13 @@ export function MediaPlayer({ media, className }: MediaPlayerProps) {
           <img
             ref={imgRef}
             src={getMediaUrl(media.src)}
-            alt={media.altText || 'Image du quiz'}
+            alt={media.alt || 'Image du quiz'}
             className="w-full h-auto rounded-lg object-cover max-h-64"
             onError={() => setError('Impossible de charger l\'image')}
           />
-          {media.altText && (
+          {media.alt && (
             <figcaption className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              {media.altText}
+              {media.alt}
             </figcaption>
           )}
         </figure>
@@ -229,8 +230,6 @@ export function MediaPlayer({ media, className }: MediaPlayerProps) {
             onTimeUpdate={handleTimeUpdate}
             onEnded={handleEnded}
             onError={() => setError('Impossible de charger l\'audio')}
-            volume={volume}
-            playbackRate={playbackRate}
           />
         </div>
       );
@@ -250,9 +249,9 @@ export function MediaPlayer({ media, className }: MediaPlayerProps) {
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
           />
-          {media.altText && (
+          {media.alt && (
             <div className="p-3 bg-gray-100 dark:bg-gray-800">
-              <p className="text-sm text-gray-600 dark:text-gray-300">{media.altText}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">{media.alt}</p>
             </div>
           )}
         </div>

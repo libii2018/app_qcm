@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { QuizQuestion } from '@qcm/shared';
+import { QuizQuestion } from '../../types/api';
 import { QuestionRenderer } from '../../components/quiz/QuestionRenderer';
 import { Button } from '../../components/common/Button';
 import { Layout } from '../../components/Layout';
@@ -10,17 +10,26 @@ import { cn } from '../../utils/cn';
 export function QuizResults() {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
+  const resultsState = (location.state || {}) as {
+    quiz?: unknown;
+    questions?: QuizQuestion[];
+    selectedOptions?: Record<string, string[]>;
+    correctAnswers?: Record<string, boolean>;
+    answerTimes?: Record<string, number>;
+    startTime?: number;
+    totalQuestions?: number;
+    title?: string;
+  };
   const {
-    quiz,
-    questions,
-    selectedOptions,
-    correctAnswers,
-    answerTimes,
+    questions = [],
+    selectedOptions = {},
+    correctAnswers = {},
+    answerTimes = {},
     startTime,
-    totalQuestions,
+    totalQuestions = 0,
     title
-  } = location.state || {};
+  } = resultsState;
 
   const [activeIndex, setActiveIndex] = useState(0);
 

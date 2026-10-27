@@ -1,13 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { apiClient } from '../lib/apiClient';
-
-interface SyncQueueItem {
-  id: string;
-  type: 'answer' | 'quiz' | 'media';
-  data: any;
-  timestamp: number;
-  retryCount: number;
-}
+import { SyncQueueItem } from '../types/api';
 
 interface SyncContextType {
   isOnline: boolean;

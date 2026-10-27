@@ -367,7 +367,7 @@ export async function getFailedQuestions(req: Request, res: Response) {
   );
 
   // Obtenir les titres des quiz pour plus de contexte
-  const quizIds = [...new Set(filteredEvents.map(e => e.quizId).filter(Boolean))];
+  const quizIds = [...new Set(filteredEvents.map(e => e.quizId).filter((id): id is string => Boolean(id)))];
   const quizzes = await prisma.quiz.findMany({
     where: { id: { in: quizIds } },
     select: { id: true, title: true },

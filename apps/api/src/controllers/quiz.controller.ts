@@ -69,7 +69,9 @@ const ensureUploadDir = async () => {
  */
 export async function getQuizzes(req: Request, res: Response) {
   const userId = (req as any).user?.userId;
-  const { page = 1, pageSize = 20, search, subject, tag, difficulty } = req.query;
+  const page = parseInt(req.query.page as string, 10) || 1;
+  const pageSize = parseInt(req.query.pageSize as string, 10) || 20;
+  const { search, subject, tag, difficulty } = req.query;
 
   const skip = (page - 1) * pageSize;
   const take = pageSize;
@@ -106,6 +108,7 @@ export async function getQuizzes(req: Request, res: Response) {
       description: true,
       tags: true,
       difficulty: true,
+      jsonContent: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -114,10 +117,15 @@ export async function getQuizzes(req: Request, res: Response) {
   // Parser les tags et filtrer par tag si nécessaire
   const tagFilter = tag as string | undefined;
   const quizzes = quizzesRaw
-    .map(q => ({
-      ...q,
-      tags: typeof q.tags === 'string' ? JSON.parse(q.tags) : q.tags,
-    }))
+    .map(q => {
+      const { jsonContent, ...rest } = q;
+      const parsedJson = parseJsonField<QuizJson | null>(jsonContent);
+      return {
+        ...rest,
+        tags: typeof q.tags === 'string' ? JSON.parse(q.tags) : q.tags,
+        questionCount: Array.isArray(parsedJson?.questions) ? parsedJson.questions.length : 0,
+      };
+    })
     .filter(q => !tagFilter || (Array.isArray(q.tags) && q.tags.includes(tagFilter)));
 
   // Appliquer la pagination après le filtrage par tag
@@ -130,8 +138,8 @@ export async function getQuizzes(req: Request, res: Response) {
       quizzes: paginatedQuizzes,
       pagination: {
         total,
-        page: parseInt(page as string),
-        pageSize: parseInt(pageSize as string),
+        page,
+        pageSize,
         totalPages,
       },
     },
@@ -614,7 +622,7 @@ export async function exportQuiz(req: Request, res: Response) {
     throw new NotFoundError('Quiz non trouvé');
   }
 
-  const quizJson = quiz.jsonContent as QuizJson;
+  const quizJson = (typeof quiz.jsonContent === 'string' ? JSON.parse(quiz.jsonContent) : quiz.jsonContent) as QuizJson;
 
   if (format === 'zip') {
     // Exporter en ZIP

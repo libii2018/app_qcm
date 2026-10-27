@@ -162,7 +162,7 @@ export function Today() {
             <div className="grid grid-cols-1 gap-3">
               {session.questions.slice(0, 3).map((q, index) => (
                 <div 
-                  key={q.questionId}
+                  key={q.question.id}
                   className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700"
                 >
                   <div className="flex items-start gap-3">
@@ -170,7 +170,7 @@ export function Today() {
                       {index + 1}
                     </span>
                     <div>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">{q.questionText}</p>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">{q.question.prompt.find(p => p.type === 'text')?.value || 'Question'}</p>
                       {q.reason && (
                         <p className="text-sm text-gray-500 dark:text-gray-400">{q.reason}</p>
                       )}

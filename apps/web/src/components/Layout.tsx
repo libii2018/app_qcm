@@ -1,10 +1,10 @@
 import { ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { cn } from '../utils/cn';
 import { useTheme } from '../contexts/ThemeContext';
 
 export interface LayoutProps {
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 const navigationItems = [
@@ -134,7 +134,7 @@ export function Layout({ children }: LayoutProps) {
       {/* Main Content */}
       <main className="lg:pl-64 pb-16 lg:pb-0 min-h-screen">
         <div className="p-4 lg:p-6">
-          {children}
+          {children ?? <Outlet />}
         </div>
       </main>
     </div>

@@ -1,4 +1,8 @@
-import { Quiz, QuizQuestion, AnswerEvent, ReviewState, QuizStats, SessionQuestion, UserSettings, BackupData } from '@qcm/shared';
+import { Quiz, Question, AnswerEvent, ReviewState, ReviewQueueItem } from '@qcm/shared';
+
+// Aliases vers les types actuels du package partagé
+export type QuizQuestion = Question;
+export type SessionQuestion = ReviewQueueItem;
 
 // API Response Types
 export interface ApiResponse<T> {
@@ -33,11 +37,12 @@ export interface AuthResponse {
 }
 
 // Quiz Types
-export interface QuizWithId extends Quiz {
+export interface QuizWithId extends Omit<Quiz, 'id' | 'userId' | 'createdAt' | 'updatedAt'> {
   id: string;
   userId: string;
   createdAt: string;
   updatedAt: string;
+  questionCount?: number;
 }
 
 export interface QuizListResponse {
@@ -96,11 +101,35 @@ export interface StatsFilter {
   tag?: string;
 }
 
-export interface DailyStats {
+// Statistiques agrégées côté client depuis /api/stats/*
+export interface DailyStatsEntry {
   date: string;
   totalAnswers: number;
   correctAnswers: number;
-  successRate: number;
+  successRate: number; // 0-1
+  averageTime: number; // ms
+}
+
+export interface FailedQuestionEntry {
+  questionId: string;
+  questionText: string;
+  quizTitle: string;
+  failureRate: number; // 0-1
+  totalAttempts: number;
+}
+
+export interface QuizStats {
+  totalAnswers: number;
+  correctAnswers: number;
+  successRate: number; // 0-1
+  bySubject: Record<string, { successRate: number; totalAnswers: number }>;
+  byTag: Record<string, { successRate: number; totalAnswers: number }>;
+  byDifficulty: Record<string, { successRate: number; totalAnswers: number }>;
+  dailyStats: DailyStatsEntry[];
+  mostFailedQuestions: FailedQuestionEntry[];
+  reviewDistribution: { new: number; learning: number; mastered: number };
+  streak: number;
+  forecast: { date: string; count: number }[];
 }
 
 // Today Types
@@ -117,12 +146,26 @@ export interface BackupResponse {
   createdAt: string;
 }
 
+// Settings Types
+export interface UserSettings {
+  dailyGoal: number;
+  theme: 'light' | 'dark' | 'system';
+  notifications: boolean;
+  playSound: boolean;
+  maxMediaSize: {
+    image: number;
+    audio: number;
+    video: number;
+  };
+  streak?: number;
+}
+
 // Sync Types
 export interface SyncQueueItem {
   id: string;
   type: 'answer' | 'quiz' | 'media';
   data: any;
-  timestamp: string;
+  timestamp: number;
   retryCount: number;
 }
 

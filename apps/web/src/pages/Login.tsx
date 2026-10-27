@@ -31,7 +31,7 @@ export function Login() {
     setError(null);
 
     try {
-      await login({ email, password });
+      await login(email, password);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);

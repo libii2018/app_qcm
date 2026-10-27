@@ -8,6 +8,7 @@
  */
 
 import Dexie, { Table } from 'dexie';
+import { SyncQueueItem } from './types/api';
 
 // Types pour la base de données
 export interface QueuedAnswer {
@@ -50,6 +51,7 @@ class QcmDatabase extends Dexie {
   quizzes!: Table<CachedQuiz, string>;
   settings!: Table<UserSettings, string>;
   reviewStates!: Table<ReviewState, string>;
+  syncQueue!: Table<SyncQueueItem, string>;
 
   constructor() {
     super('QcmDatabase');
@@ -63,6 +65,11 @@ class QcmDatabase extends Dexie {
       settings: 'id',
       // États de révision locale (pour le mode hors ligne)
       reviewStates: 'id, questionId, quizId, nextReviewDate, updatedAt',
+    });
+
+    this.version(2).stores({
+      // File d'attente de synchronisation
+      syncQueue: 'id, type, timestamp',
     });
   }
 }
@@ -90,9 +97,9 @@ export async function initDb() {
 export const answerQueue = {
   // Ajouter une réponse à la queue
   async add(data: any) {
-    const id = crypto.randomUUID || (() => Math.random().toString(36).substring(2, 9) + Date.now().toString(36));
+    const id = crypto.randomUUID?.() ?? (() => Math.random().toString(36).substring(2, 9) + Date.now().toString(36))();
     return await db.answers.add({
-      id: id(),
+      id,
       data,
       timestamp: new Date(),
       attempts: 0,
@@ -163,21 +170,14 @@ export const settings = {
 
   // Mettre à jour les paramètres
   async set(data: Partial<UserSettings>) {
-    const existing = await db.settings.get('user');
-    
-    if (existing) {
-      return await db.settings.update('user', {
-        ...existing,
-        ...data,
-        updatedAt: new Date(),
-      });
-    } else {
-      return await db.settings.add({
-        id: 'user',
-        ...data,
-        updatedAt: new Date(),
-      });
-    }
+    return await db.settings.put({
+      id: 'user',
+      theme: 'system',
+      language: 'fr',
+      dailyGoal: 20,
+      ...data,
+      updatedAt: new Date(),
+    });
   },
 };
 
@@ -193,7 +193,7 @@ export const localReviewStates = {
   async set(state: ReviewState) {
     return await db.reviewStates.put({
       ...state,
-      id: crypto.randomUUID || (() => Math.random().toString(36).substring(2, 9) + Date.now().toString(36))(),
+      id: crypto.randomUUID?.() ?? (() => Math.random().toString(36).substring(2, 9) + Date.now().toString(36))(),
       updatedAt: new Date(),
     });
   },

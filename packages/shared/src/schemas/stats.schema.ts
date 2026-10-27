@@ -81,11 +81,14 @@ export const FailedQuestionSchema = z.object({
   lastAttemptDate: z.string().datetime().optional(),
 });
 
-export type StatsFilterParams = z.infer<typeof StatsFilterSchema>;
-export type PerformanceStats = z.infer<typeof PerformanceStatsSchema>;
-export type TagStats = z.infer<typeof TagStatsSchema>;
-export type SubjectStats = z.infer<typeof SubjectStatsSchema>;
-export type DailyStats = z.infer<typeof DailyStatsSchema>;
-export type LearningStats = z.infer<typeof LearningStatsSchema>;
-export type WeakArea = z.infer<typeof WeakAreaSchema>;
-export type FailedQuestion = z.infer<typeof FailedQuestionSchema>;
+// Types ré-exportés depuis ../types pour éviter les exports ambigus
+export type {
+  DailyStats,
+  FailedQuestion,
+  LearningStats,
+  PerformanceStats,
+  StatsFilterParams,
+  SubjectStats,
+  TagStats,
+  WeakArea,
+} from '../types';

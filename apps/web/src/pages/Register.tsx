@@ -40,7 +40,7 @@ export function Register() {
     }
 
     try {
-      await register({ email, password });
+      await register(email, password);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);

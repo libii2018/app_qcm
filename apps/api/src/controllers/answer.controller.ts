@@ -65,6 +65,7 @@ export async function recordAnswer(req: Request, res: Response) {
       responseTime: true,
       usedHint: true,
       timestamp: true,
+      selectedOptions: true,
       tags: true,
       subject: true,
       difficulty: true,

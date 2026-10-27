@@ -17,7 +17,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-t
 /**
  * Vérifie le token JWT et ajoute l'utilisateur à la requête
  */
-export function authenticateJWT(req: Request, res: Response, next: NextFunction) {
+export function authenticateJWT(req: Request, res: Response, next: NextFunction): Response | void {
   // Récupérer le token depuis les cookies ou le header Authorization
   const token = req.cookies?.token || 
                 req.headers?.authorization?.replace('Bearer ', '') ||
@@ -66,7 +66,7 @@ export function authenticateJWT(req: Request, res: Response, next: NextFunction)
  * Middleware pour vérifier que l'utilisateur est connecté
  * (utilise authenticateJWT et ajoute la vérification de l'existence de l'utilisateur)
  */
-export async function requireAuth(req: Request, res: Response, next: NextFunction) {
+export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
   // D'abord, vérifier le JWT
   const token = req.cookies?.token || 
                 req.headers?.authorization?.replace('Bearer ', '') ||
@@ -144,7 +144,7 @@ export function requireResourceOwnership(
   model: 'quiz' | 'media',
   paramName: string = 'id'
 ) {
-  return async (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
     try {
       const userId = (req as any).user?.userId;
       const resourceId = req.params[paramName];

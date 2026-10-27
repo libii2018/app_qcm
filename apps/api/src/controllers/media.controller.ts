@@ -65,7 +65,7 @@ export async function uploadMedia(req: Request, res: Response) {
 
     // Vérifier la taille selon le type
     const mediaType = getMediaTypeFromMime(file.mimetype);
-    const maxSize = MEDIA_SIZE_LIMITS[mediaType] || MEDIA_SIZE_LIMITS.default;
+    const maxSize = (MEDIA_SIZE_LIMITS as Record<string, number>)[mediaType] || MEDIA_SIZE_LIMITS.default;
 
     if (file.size > maxSize) {
       throw new BadRequestError(

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useStats } from '../../hooks/useStats';
-import { QuizStats } from '@qcm/shared';
+import { QuizStats } from '../../types/api';
 import { Layout } from '../../components/Layout';
 import { Button } from '../../components/common/Button';
 import { Select } from '../../components/common/Select';
@@ -39,27 +39,25 @@ export function Stats() {
   const [subjectFilter, setSubjectFilter] = useState('');
   const [tagFilter, setTagFilter] = useState('');
 
-  // Calculate dates
-  const now = new Date();
-  const fromMap = {
-    '7d': new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
-    '30d': new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
-    '90d': new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
-    'all': new Date(0)
-  };
-  const toMap = {
-    '7d': now,
-    '30d': now,
-    '90d': now,
-    'all': now
-  };
+  // Calculate dates (mémorisé pour éviter un refetch infini : les dates
+  // ne doivent changer que quand period ou les filtres changent)
+  const statsFilter = useMemo(() => {
+    const now = new Date();
+    const fromMap = {
+      '7d': new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+      '30d': new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+      '90d': new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
+      'all': new Date(0)
+    };
+    return {
+      from: fromMap[period].toISOString(),
+      to: now.toISOString(),
+      subject: subjectFilter || undefined,
+      tag: tagFilter || undefined
+    };
+  }, [period, subjectFilter, tagFilter]);
 
-  const { data, isLoading, error } = useStats({
-    from: fromMap[period].toISOString(),
-    to: toMap[period].toISOString(),
-    subject: subjectFilter || undefined,
-    tag: tagFilter || undefined
-  });
+  const { data, isLoading, error } = useStats(statsFilter);
 
   // Calculate derived stats
   const stats = useMemo(() => {
@@ -325,7 +323,7 @@ export function Stats() {
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
-                  label={({ name, percent }) => `${name}: ${Math.round(percent * 100)}%`}
+                  label={({ name, percent }) => `${name}: ${Math.round((percent ?? 0) * 100)}%`}
                 >
                   {reviewDistributionData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />

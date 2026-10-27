@@ -261,7 +261,7 @@ export const MEDIA_SIZE_LIMITS = {
  */
 export function isWithinSizeLimit(size: number, mimeType: string): boolean {
   const type = getMediaTypeFromMime(mimeType);
-  const limit = MEDIA_SIZE_LIMITS[type] || MEDIA_SIZE_LIMITS.default;
+  const limit = (MEDIA_SIZE_LIMITS as Record<string, number>)[type] || MEDIA_SIZE_LIMITS.default;
   return size <= limit;
 }
 

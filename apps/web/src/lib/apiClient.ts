@@ -1,5 +1,5 @@
-import { Quiz, QuizQuestion, ReviewState, AnswerEvent, QuizStats, SessionQuestion, UserSettings, BackupData } from '@qcm/shared';
-import { ApiResponse, ApiError, AuthCredentials, AuthResponse, User, QuizWithId, QuizListResponse, QuizFilter, MediaResponse, AnswerSubmission, AnswerResponse, StatsFilter, TodaySession, BackupResponse } from '../types/api';
+import { QuizJson, ReviewState, AnswerEvent, QuizSession } from '@qcm/shared';
+import { ApiResponse, ApiError, AuthCredentials, AuthResponse, User, QuizWithId, QuizListResponse, QuizFilter, MediaResponse, AnswerResponse, StatsFilter, TodaySession, BackupResponse, QuizStats, UserSettings, DailyStatsEntry, FailedQuestionEntry } from '../types/api';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -78,26 +78,32 @@ class ApiClient {
       if (filter.page) query.append('page', filter.page.toString());
       if (filter.pageSize) query.append('pageSize', filter.pageSize.toString());
     }
-    return this.fetchWithAuth<ApiResponse<QuizListResponse>>(`/quizzes?${query.toString()}`)
-      .then(r => r.data);
+    return this.fetchWithAuth<ApiResponse<{ quizzes: QuizWithId[]; pagination: { total: number; page: number; pageSize: number; totalPages: number } }>>(`/quizzes?${query.toString()}`)
+      .then(r => ({
+        quizzes: r.data.quizzes,
+        total: r.data.pagination.total,
+        page: r.data.pagination.page,
+        pageSize: r.data.pagination.pageSize,
+      }));
   }
 
   async getQuizById(id: string): Promise<QuizWithId> {
-    return this.fetchWithAuth<ApiResponse<QuizWithId>>(`/quizzes/${id}`).then(r => r.data);
+    return this.fetchWithAuth<ApiResponse<{ quiz: QuizWithId }>>(`/quizzes/${id}`).then(r => r.data.quiz);
   }
 
-  async createQuiz(quiz: Omit<Quiz, 'id'>): Promise<QuizWithId> {
-    return this.fetchWithAuth<ApiResponse<QuizWithId>>('/quizzes', {
+  // L'API attend directement le QuizJson en body (validé par validateQuizJson)
+  async createQuiz(quiz: QuizJson): Promise<QuizWithId> {
+    return this.fetchWithAuth<ApiResponse<{ quiz: QuizWithId }>>('/quizzes', {
       method: 'POST',
       body: JSON.stringify(quiz),
-    }).then(r => r.data);
+    }).then(r => r.data.quiz);
   }
 
-  async updateQuiz(id: string, quiz: Partial<Quiz>): Promise<QuizWithId> {
-    return this.fetchWithAuth<ApiResponse<QuizWithId>>(`/quizzes/${id}`, {
+  async updateQuiz(id: string, quiz: QuizJson): Promise<QuizWithId> {
+    return this.fetchWithAuth<ApiResponse<{ quiz: QuizWithId }>>(`/quizzes/${id}`, {
       method: 'PUT',
       body: JSON.stringify(quiz),
-    }).then(r => r.data);
+    }).then(r => r.data.quiz);
   }
 
   async deleteQuiz(id: string): Promise<void> {
@@ -105,9 +111,9 @@ class ApiClient {
   }
 
   async duplicateQuiz(id: string): Promise<QuizWithId> {
-    return this.fetchWithAuth<ApiResponse<QuizWithId>>(`/quizzes/${id}/duplicate`, {
+    return this.fetchWithAuth<ApiResponse<{ quiz: QuizWithId }>>(`/quizzes/${id}/duplicate`, {
       method: 'POST',
-    }).then(r => r.data);
+    }).then(r => r.data.quiz);
   }
 
   async importQuiz(file: File, isZip: boolean = false): Promise<QuizWithId> {
@@ -115,10 +121,10 @@ class ApiClient {
     formData.append('file', file);
     formData.append('isZip', isZip.toString());
     
-    return this.fetchWithAuth<ApiResponse<QuizWithId>>('/quizzes/import', {
+    return this.fetchWithAuth<ApiResponse<{ quiz: QuizWithId }>>('/quizzes/import', {
       method: 'POST',
       body: formData,
-    }).then(r => r.data);
+    }).then(r => r.data.quiz);
   }
 
   async exportQuiz(id: string, asZip: boolean = false): Promise<Blob> {
@@ -165,21 +171,22 @@ class ApiClient {
   }
 
   // Answers
-  async submitAnswer(submission: AnswerSubmission): Promise<AnswerResponse> {
-    return this.fetchWithAuth<ApiResponse<AnswerResponse>>('/answers', {
+  async submitAnswer(submission: AnswerSubmissionPayload): Promise<AnswerResponse> {
+    return this.fetchWithAuth<ApiResponse<{ answerEvent: AnswerResponse }>>('/answers', {
       method: 'POST',
       body: JSON.stringify(submission),
-    }).then(r => r.data);
+    }).then(r => r.data.answerEvent);
   }
 
-  async submitAnswers(submissions: AnswerSubmission[]): Promise<AnswerResponse[]> {
-    return this.fetchWithAuth<ApiResponse<AnswerResponse[]>>('/answers/batch', {
+  async submitSession(session: QuizSession): Promise<void> {
+    await this.fetchWithAuth('/answers/session', {
       method: 'POST',
-      body: JSON.stringify(submissions),
-    }).then(r => r.data);
+      body: JSON.stringify(session),
+    });
   }
 
   // Stats
+  // Agrège les endpoints granulaires de /api/stats/* dans la forme attendue par la page Stats
   async getStats(filter?: StatsFilter): Promise<QuizStats> {
     const query = new URLSearchParams();
     if (filter) {
@@ -188,13 +195,92 @@ class ApiClient {
       if (filter.subject) query.append('subject', filter.subject);
       if (filter.tag) query.append('tag', filter.tag);
     }
-    return this.fetchWithAuth<ApiResponse<QuizStats>>(`/stats?${query.toString()}`)
-      .then(r => r.data);
+    const qs = query.toString();
+    const suffix = qs ? `?${qs}` : '';
+
+    const overviewResp = await this.fetchWithAuth<ApiResponse<{
+      overview: {
+        quizCount: number;
+        answerCount: number;
+        correctCount: number;
+        incorrectCount: number;
+        successRate: number; // 0-100
+        streak: number;
+        dailyGoal: number;
+      };
+    }>>(`/stats${suffix}`);
+    const overview = overviewResp.data.overview;
+
+    const [perfResp, dailyResp, subjectsResp, tagsResp, learningResp, failedResp] = await Promise.all([
+      this.fetchWithAuth<ApiResponse<{ stats: { avgResponseTime: number } }>>(`/stats/performance${suffix}`).catch(() => null),
+      this.fetchWithAuth<ApiResponse<{ stats: Array<{ date: string; questionsAnswered: number; correctCount: number; successRate: number; responseTime: number }> }>>(`/stats/daily${suffix}`).catch(() => null),
+      this.fetchWithAuth<ApiResponse<{ stats: Array<{ subject: string; totalQuestions: number; successRate: number }> }>>(`/stats/subjects${suffix}`).catch(() => null),
+      this.fetchWithAuth<ApiResponse<{ stats: Array<{ tag: string; totalQuestions: number; successRate: number }> }>>(`/stats/tags${suffix}`).catch(() => null),
+      this.fetchWithAuth<ApiResponse<{ learningStats: { newQuestions: number; learningQuestions: number; masteredQuestions: number; forecast: Array<{ date: string; estimatedQuestions: number }> } }>>(`/stats/learning`).catch(() => null),
+      this.fetchWithAuth<ApiResponse<{ failedQuestions: Array<{ questionId: string; quizId?: string; title: string; totalAttempts: number; successRate: number }> }>>(`/stats/failed-questions${suffix}&limit=10`).catch(() => null),
+    ]);
+
+    const daily: DailyStatsEntry[] = (dailyResp?.data.stats || []).map(d => ({
+      date: d.date,
+      totalAnswers: d.questionsAnswered,
+      correctAnswers: d.correctCount,
+      successRate: d.successRate / 100,
+      averageTime: d.responseTime,
+    }));
+
+    const bySubject: QuizStats['bySubject'] = {};
+    (subjectsResp?.data.stats || []).forEach(s => {
+      bySubject[s.subject] = { successRate: s.successRate / 100, totalAnswers: s.totalQuestions };
+    });
+
+    const byTag: QuizStats['byTag'] = {};
+    (tagsResp?.data.stats || []).forEach(t => {
+      byTag[t.tag] = { successRate: t.successRate / 100, totalAnswers: t.totalQuestions };
+    });
+
+    const learning = learningResp?.data.learningStats;
+    const mostFailedQuestions: FailedQuestionEntry[] = (failedResp?.data.failedQuestions || []).map(f => ({
+      questionId: f.questionId,
+      questionText: f.title,
+      quizTitle: f.quizId || '',
+      failureRate: 1 - f.successRate / 100,
+      totalAttempts: f.totalAttempts,
+    }));
+
+    return {
+      totalAnswers: overview.answerCount,
+      correctAnswers: overview.correctCount,
+      successRate: overview.successRate / 100,
+      bySubject,
+      byTag,
+      byDifficulty: {},
+      dailyStats: daily,
+      mostFailedQuestions,
+      reviewDistribution: learning
+        ? { new: learning.newQuestions, learning: learning.learningQuestions, mastered: learning.masteredQuestions }
+        : { new: 0, learning: 0, mastered: 0 },
+      streak: overview.streak,
+      forecast: (learning?.forecast || []).map(f => ({ date: f.date, count: f.estimatedQuestions })),
+    };
   }
 
   // Today
   async getTodaySession(): Promise<TodaySession> {
-    return this.fetchWithAuth<ApiResponse<TodaySession>>('/today').then(r => r.data);
+    return this.fetchWithAuth<ApiResponse<{
+      session: {
+        questions: TodaySession['questions'];
+        totalQuestions: number;
+        newQuestionsCount: number;
+        reviewQuestionsCount: number;
+      };
+      counts: { dueToday: number; newQuestions: number; totalToReview: number };
+      streak: number;
+      dailyGoal: number;
+    }>>('/today').then(r => ({
+      questions: r.data.session.questions,
+      totalCount: r.data.session.totalQuestions,
+      reasonSummary: [...new Set(r.data.session.questions.map(q => q.reason))].join(', '),
+    }));
   }
 
   // Backup
@@ -255,6 +341,17 @@ class ApiClient {
   async healthCheck(): Promise<{ status: string }> {
     return this.fetchWithAuth<ApiResponse<{ status: string }>>('/health').then(r => r.data);
   }
+}
+
+// Payload d'une réponse individuelle (POST /api/answers, schéma AnswerEventSchema)
+export interface AnswerSubmissionPayload {
+  questionId: string;
+  quizId?: string;
+  selectedOptions: string[];
+  correct: boolean;
+  responseTime: number;
+  usedHint: boolean;
+  timestamp?: string;
 }
 
 export const apiClient = new ApiClient();

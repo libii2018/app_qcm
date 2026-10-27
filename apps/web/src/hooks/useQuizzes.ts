@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
 import { QuizWithId, QuizListResponse, QuizFilter } from '../types/api';
-import { Quiz } from '@qcm/shared';
+import { QuizJson } from '@qcm/shared';
 
 export function useQuizzes(filter?: QuizFilter) {
   return useQuery<QuizListResponse, Error>({
@@ -21,7 +21,7 @@ export function useQuiz(id: string) {
 export function useCreateQuiz() {
   const queryClient = useQueryClient();
   
-  return useMutation<QuizWithId, Error, Omit<Quiz, 'id'>>({
+  return useMutation<QuizWithId, Error, QuizJson>({
     mutationFn: (quiz) => apiClient.createQuiz(quiz),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quizzes'] });
@@ -32,7 +32,7 @@ export function useCreateQuiz() {
 export function useUpdateQuiz() {
   const queryClient = useQueryClient();
   
-  return useMutation<QuizWithId, Error, { id: string; quiz: Partial<Quiz> }>({
+  return useMutation<QuizWithId, Error, { id: string; quiz: QuizJson }>({
     mutationFn: ({ id, quiz }) => apiClient.updateQuiz(id, quiz),
     onSuccess: (data) => {
       queryClient.setQueryData(['quiz', data.id], data);

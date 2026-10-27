@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
-import { UserSettings } from '@qcm/shared';
+import { UserSettings } from '../types/api';
 
 export function useSettings() {
   return useQuery<UserSettings, Error>({

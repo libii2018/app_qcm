@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { QuizJson } from '@qcm/shared';
 import { QuizWithId } from '../../types/api';
 import { Button } from '../common/Button';
 import { cn } from '../../utils/cn';
@@ -106,10 +107,10 @@ export function QuizCard({ quiz, onDelete, onDuplicate, showActions = true, clas
         )}
       </div>
 
-      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-3">{quiz.questions?.length || 0} questions</p>
+      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-3">{quiz.questionCount ?? (quiz.jsonContent as QuizJson | null)?.questions?.length ?? 0} questions</p>
 
       {quiz.tags && quiz.tags.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 mb-4">
           {quiz.tags.map((tag) => (
             <span
               key={tag}
@@ -120,6 +121,10 @@ export function QuizCard({ quiz, onDelete, onDuplicate, showActions = true, clas
           ))}
         </div>
       )}
+
+      <Link to={`/quizzes/${quiz.id}/play`} className="block mt-4">
+        <Button className="w-full">Jouer</Button>
+      </Link>
     </div>
   );
 }

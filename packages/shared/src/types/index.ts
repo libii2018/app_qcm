@@ -183,6 +183,16 @@ export interface QuestionStatus {
   nextReviewDate?: Date;
 }
 
+export interface FailedQuestion {
+  questionId: string;
+  quizId?: string;
+  title: string;
+  totalAttempts: number;
+  correctAttempts: number;
+  successRate: number; // 0-100
+  lastAttemptDate?: string;
+}
+
 export interface ReviewQueueItem {
   question: Question;
   quizId: string;

@@ -133,7 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Mutation pour la connexion
   const loginMutation = useMutation({
-    mutationFn: loginUser,
+    mutationFn: ({ email, password }: { email: string; password: string }) => loginUser(email, password),
     onSuccess: async (result) => {
       setUser(result.data.user);
       setToken(result.data.token);
@@ -148,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Mutation pour l'inscription
   const registerMutation = useMutation({
-    mutationFn: registerUser,
+    mutationFn: ({ email, password }: { email: string; password: string }) => registerUser(email, password),
     onSuccess: async (result) => {
       setUser(result.data.user);
       setToken(result.data.token);

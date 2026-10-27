@@ -380,7 +380,8 @@ export function filterEvents(
 
   // Filtrer par tag
   if (params.tag) {
-    filtered = filtered.filter(e => e.tags.includes(params.tag));
+    const tag = params.tag;
+    filtered = filtered.filter(e => e.tags.includes(tag));
   }
 
   // Filtrer par difficulté
